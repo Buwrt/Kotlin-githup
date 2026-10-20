@@ -18,8 +18,27 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      - name: Locate Android SDK
+        run: |
+          set -e
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "SDK=$SDK"
+          ls "$SDK"
+          echo "platforms:";  ls "$SDK/platforms"  || true
+          echo "build-tools:"; ls "$SDK/build-tools" || true
+          echo "sdk.dir=$SDK" > local.properties
+          echo "ANDROID_HOME=$SDK" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK" >> "$GITHUB_ENV"
+
+      - name: Accept SDK licenses
+        run: |
+          SDK="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SM=$(find "$SDK/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -1)
+          if [ -n "$SM" ]; then
+            yes | "$SM" --sdk_root="$SDK" --licenses > /dev/null 2>&1 || true
+          fi
+          mkdir -p "$HOME/.android"
+          echo "24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$HOME"/.android/repositories.cfg 2>/dev/null || true
 
       - name: Install Gradle 8.7
         run: |
@@ -28,7 +47,10 @@ jobs:
           echo "/opt/gradle-8.7/bin" >> "$GITHUB_PATH"
 
       - name: Assemble
-        run: gradle --no-daemon --stacktrace :app:assembleDebug :app:assembleRelease
+        id: assemble
+        run: |
+          set -o pipefail
+          gradle --no-daemon --stacktrace :app:assembleDebug :app:assembleRelease 2>&1 | tee gradle-build.log
 
       - name: Sign release APK
         run: |
@@ -43,13 +65,14 @@ jobs:
             -dname "CN=githup-ui, OU=ci, O=githup, L=, S=, C=CN"
           UNSIGNED=$(find app/build/outputs/apk/release -name '*.apk' | head -1)
           echo "unsigned: $UNSIGNED"
-          "$BT/zipalign" -f -v 4 "$UNSIGNED" app-release-aligned.apk
+          "$BT/zipalign" -f 4 "$UNSIGNED" app-release-aligned.apk
           "$BT/apksigner" sign \
             --ks ci-release.jks --ks-key-alias githup-ui \
             --ks-pass pass:githup-ui --key-pass pass:githup-ui \
             --out githup-ui-1.0.0-release.apk \
             app-release-aligned.apk
           "$BT/apksigner" verify githup-ui-1.0.0-release.apk
+          rm -f ci-release.jks
 
       - name: Copy APKs
         run: |
@@ -58,17 +81,18 @@ jobs:
           cp githup-ui-1.0.0-release.apk out/
           ls -lh out
 
-      - name: Upload artifacts
+      - name: Upload APKs
         uses: actions/upload-artifact@v4
         with:
           name: githup-ui-apk
           path: out/*.apk
           if-no-files-found: error
 
-      - name: Upload build log on failure
-        if: failure()
+      # 沙盒取不到 job 日志（results-receiver 域名被拦），所以构建日志也走 artifact
+      - name: Upload build log
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: build-failure
-          path: app/build/reports
+          name: build-log
+          path: gradle-build.log
           if-no-files-found: ignore
