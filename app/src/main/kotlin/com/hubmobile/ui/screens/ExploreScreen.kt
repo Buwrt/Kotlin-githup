@@ -34,6 +34,7 @@ import com.hubmobile.ui.components.Segmented
 import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupDimens
 import com.hubmobile.ui.theme.GithupType
+import androidx.compose.foundation.layout.weight
 
 /**
  * 探索 —— 顶部「找点东西」入口（点了跳搜索），下面是 Trending。

@@ -34,6 +34,7 @@ import com.hubmobile.ui.components.SkeletonList
 import com.hubmobile.ui.store.LocalStore
 import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupType
+import androidx.compose.foundation.layout.weight
 
 /**
  * 首页 —— 对齐 page-home.js 的登录态首页：

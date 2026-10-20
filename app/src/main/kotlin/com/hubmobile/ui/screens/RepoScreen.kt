@@ -37,6 +37,7 @@ import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupDimens
 import com.hubmobile.ui.store.LocalStore
 import com.hubmobile.ui.theme.GithupType
+import androidx.compose.foundation.layout.weight
 
 /**
  * 仓库详情 —— 对齐 page-repo.js：

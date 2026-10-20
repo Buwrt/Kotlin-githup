@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.sp
 import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupDimens
 import com.hubmobile.ui.theme.GithupType
+import androidx.compose.foundation.layout.weight
 
 data class TabSpec(
     val key: String,

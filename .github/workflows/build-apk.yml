@@ -26,31 +26,65 @@ jobs:
       # （android-actions/setup-android 在很多仓库上会直接失败）
       - name: 看一眼预装的 SDK
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME  ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT"
+          echo "ANDROID_HOME=$ANDROID_HOME"
           ls "$ANDROID_HOME/platforms" 2>/dev/null || true
           ls "$ANDROID_HOME/build-tools" 2>/dev/null || true
 
       - name: 构建 Debug 包
+        id: gradle
         run: |
           chmod +x ./gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          set +e
+          ./gradlew assembleDebug --no-daemon --console=plain 2>&1 | tee build.log
+          code=${PIPESTATUS[0]}
+          set -e
+          echo "gradle 退出码=$code"
+
+      # 无论成败都留一份日志在仓库里：Actions 的日志要跳转到外部存储，
+      # 从别处读不到，放仓库里最省事。带 [skip ci] 防止再触发一轮。
+      - name: 把构建日志写回仓库
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p ci
+          { echo "== 关键错误 =="
+            grep -n -A 20 "What went wrong" build.log | head -80 || true
+            echo
+            echo "== 编译错误行 =="
+            grep -n "^e: " build.log | head -60 || true
+            echo
+            echo "== 末尾 =="
+            tail -60 build.log || true
+          } > ci/last-build.log
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f ci/last-build.log
+          if git diff --quiet --cached; then
+            echo "日志无变化"
+          else
+            git commit -m "ci: 记录构建日志 [skip ci]"
+            git push origin HEAD:main
+          fi
 
       - name: 收集产物
+        if: success()
         run: |
           mkdir -p apk
           cp app/build/outputs/apk/debug/app-debug.apk apk/githup-ui-debug.apk
           sha256sum apk/githup-ui-debug.apk | cut -d' ' -f1 > apk/githup-ui-debug.apk.sha256
-          echo "=== 产物 ==="
           ls -lh apk/
 
       - name: 上传为 Actions 产物
+        if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: githup-ui-debug-apk
+          name: githup-ui-apk
           path: apk/githup-ui-debug.apk
           retention-days: 30
 
       - name: 把 APK 提交回仓库
+        if: success()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -60,15 +94,15 @@ jobs:
           if git diff --quiet --cached; then
             echo "APK 无变化，跳过提交"
           else
-            git commit -m "chore: 更新构建产物 APK（$(date -u +%Y-%m-%dT%H:%M:%SZ)）"
+            git commit -m "chore: 更新构建产物 APK [skip ci]"
             git push origin HEAD:main
           fi
 
       - name: 发布到 Release
+        if: success()
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 已存在就跳过，不覆盖也不失败
           gh release view v1.0.0 >/dev/null 2>&1 && exit 0
           gh release create v1.0.0 apk/githup-ui-debug.apk \
             --title "githup UI v1.0.0" \

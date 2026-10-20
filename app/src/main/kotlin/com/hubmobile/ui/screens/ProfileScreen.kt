@@ -27,6 +27,7 @@ import com.hubmobile.ui.store.LocalStore
 import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupDimens
 import com.hubmobile.ui.theme.GithupType
+import androidx.compose.foundation.layout.weight
 
 /**
  * 我的 —— 身份卡（64dp 头像 + 名字 + @login + 简介）、三项统计，

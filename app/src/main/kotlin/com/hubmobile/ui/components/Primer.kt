@@ -49,6 +49,8 @@ import androidx.compose.ui.unit.sp
 import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupDimens
 import com.hubmobile.ui.theme.GithupType
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.weight
 
 /* ============================================================
  * 通用块 —— 类名与 app.css 的 .card / .list-row / .btn / .seg / .chip

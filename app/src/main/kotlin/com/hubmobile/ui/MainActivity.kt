@@ -54,6 +54,7 @@ import com.hubmobile.ui.theme.GithupDimens
 import com.hubmobile.ui.store.LocalStore
 import com.hubmobile.ui.theme.GithupTheme
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.weight
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

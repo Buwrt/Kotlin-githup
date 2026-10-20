@@ -42,6 +42,7 @@ import com.hubmobile.ui.components.RowMeta
 import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupDimens
 import com.hubmobile.ui.theme.GithupType
+import androidx.compose.foundation.layout.weight
 
 /**
  * repoRow —— 仓库列表行。

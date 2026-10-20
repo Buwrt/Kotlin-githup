@@ -41,6 +41,7 @@ import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupDimens
 import com.hubmobile.ui.theme.GithupType
 import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.weight
 
 /**
  * .sheet —— 底部弹层。
