@@ -595,7 +595,7 @@ private fun GithupProgressBar() {
 @Composable
 private fun rememberInfiniteTransitionBar(): Dp {
     val inf = rememberInfiniteTransition(label = "bar")
-    val f by inf.animateFloat(
+    val f = inf.animateFloat(
         initialValue = -1f,
         targetValue = 3.5f,
         animationSpec = infiniteRepeatable(
@@ -603,7 +603,8 @@ private fun rememberInfiniteTransitionBar(): Dp {
         ),
         label = "barF"
     )
-    return (f * 100f).dp
+    // 直接用 .value 而不是 by 委托：省掉 getValue 导入，也避开 Float 的重载歧义
+    return (f.value * 100f).dp
 }
 
 /* ============================ FAB ============================ */
