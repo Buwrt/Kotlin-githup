@@ -67,11 +67,18 @@ jobs:
             git push origin HEAD:main
           fi
 
+      # 产物名由 build.gradle.kts 里的 applicationVariants 决定
+      # （githup-ui-<versionName>-<variant>.apk），所以这里用 find 而不是写死文件名
       - name: 收集产物
         if: success()
         run: |
           mkdir -p apk
-          cp app/build/outputs/apk/debug/app-debug.apk apk/githup-ui-debug.apk
+          echo "debug 目录内容："
+          ls -l app/build/outputs/apk/debug/
+          SRC=$(find app/build/outputs/apk/debug -name '*.apk' | head -1)
+          echo "找到: $SRC"
+          test -n "$SRC" || { echo "没找到 debug APK"; exit 1; }
+          cp "$SRC" apk/githup-ui-debug.apk
           sha256sum apk/githup-ui-debug.apk | cut -d' ' -f1 > apk/githup-ui-debug.apk.sha256
           ls -lh apk/
 
