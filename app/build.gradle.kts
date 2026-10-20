@@ -18,7 +18,9 @@ android {
 
     buildTypes {
         release {
+            // UI 复刻版不混淆，方便对照阅读源码
             isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 
@@ -37,6 +39,15 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
         }
     }
+
+    // 产物统一命名，便于 CI 里直接定位
+    applicationVariants.all {
+        val variant = this
+        variant.outputs.all {
+            val out = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            out.outputFileName = "githup-ui-${variant.versionName}-${variant.name}.apk"
+        }
+    }
 }
 
 dependencies {
@@ -49,9 +60,6 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
-    implementation("androidx.compose.material:material-icons-extended")
-    implementation("androidx.navigation:navigation-compose:2.8.3")
-    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.6")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
