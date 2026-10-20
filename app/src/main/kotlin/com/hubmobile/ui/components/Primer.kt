@@ -1,6 +1,5 @@
 package com.hubmobile.ui.components
 
-import LinearEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -600,7 +599,7 @@ private fun rememberInfiniteTransitionBar(): Dp {
         initialValue = -1f,
         targetValue = 3.5f,
         animationSpec = infiniteRepeatable(
-            animation = tween(1000, easing = LinearEasing)
+            animation = tween(1000, easing = androidx.compose.animation.core.LinearEasing)
         ),
         label = "barF"
     )
