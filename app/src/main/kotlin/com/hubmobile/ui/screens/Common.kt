@@ -6,8 +6,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -116,90 +114,6 @@ fun RowDivider() {
             .height(1.dp)
             .background(Githup.borderMuted)
     )
-}
-
-/**
- * .list —— 上下各一条 1px 边、行间一条 1px 分割线的列表容器。
- * 最后一行不画线（原 CSS 是 .list-row:last-child { border-bottom: 0 }）。
- */
-@Composable
-fun GithupList(
-    modifier: Modifier = Modifier,
-    content: androidx.compose.foundation.lazy.LazyListScope.() -> Unit
-) {
-    val T = Githup
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(T.bg)
-            .border(1.dp, T.border, RoundedCornerShape(0.dp))
-    ) {
-        androidx.compose.foundation.lazy.LazyColumn(modifier = Modifier.fillMaxWidth()) {
-            content()
-        }
-    }
-}
-
-/**
- * quickGrid —— 首页那块 3 列快捷入口（我的仓库 / Star / 议题 / PR / Gist / 组织）。
- * 样式照前端：每项 20dp 图标 + 11sp 文字，格线用 1px 描边。
- */
-@Composable
-fun QuickGrid(
-    items: List<QuickItem>,
-    onItem: (QuickItem) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val T = Githup
-    Column(modifier = modifier.fillMaxWidth()) {
-        items.chunked(3).forEach { rowItems ->
-            Row(modifier = Modifier.fillMaxWidth()) {
-                rowItems.forEach { item ->
-                    Column(
-                        modifier = Modifier
-                            .weight(1f)
-                            .border(1.dp, T.borderMuted)
-                            .clickable { onItem(item) }
-                            .padding(horizontal = 4.dp, vertical = 14.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(item.icon, null, tint = T.fgMuted, modifier = Modifier.size(20.dp))
-                        Text(item.label, color = T.fgMuted, fontSize = 11.sp, maxLines = 1)
-                    }
-                }
-            }
-        }
-    }
-}
-
-data class QuickItem(val label: String, val icon: ImageVector, val route: String)
-
-/** 语言色 —— GitHub 的语言色板（只列常见几种，未命中回落到中性色） */
-fun langColor(name: String): Color = when (name) {
-    "Kotlin" -> Color(0xFFA97BFF)
-    "Java" -> Color(0xFFB07219)
-    "Go" -> Color(0xFF00ADD8)
-    "Python" -> Color(0xFF3572A5)
-    "JavaScript" -> Color(0xFFF1E05A)
-    "TypeScript" -> Color(0xFF3178C6)
-    "Swift" -> Color(0xFFF05138)
-    "Rust" -> Color(0xFFDEA584)
-    "C" -> Color(0xFF555555)
-    "C++" -> Color(0xFFF34B7D)
-    "HTML" -> Color(0xFFE34C26)
-    "CSS" -> Color(0xFF563D7C)
-    "Shell" -> Color(0xFF89E051)
-    "Ruby" -> Color(0xFF701516)
-    else -> Color(0xFF8B949E)
-}
-
-fun formatCount(n: Int): String = when {
-    n >= 1000 -> {
-        val v = n / 1000.0
-        (if (v >= 10) v.toInt().toString() else String.format(Locale.US, "%.1f", v)) + "k"
-    }
-    else -> n.toString()
 }
 
 /** 仓库列表（非惰性，用于嵌在 LazyColumn 的 item 里） */

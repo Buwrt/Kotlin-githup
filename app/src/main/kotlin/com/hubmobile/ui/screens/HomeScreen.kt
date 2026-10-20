@@ -15,6 +15,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -30,6 +31,7 @@ import com.hubmobile.ui.components.GithupCard
 import com.hubmobile.ui.components.Octicons
 import com.hubmobile.ui.components.SectionTitle
 import com.hubmobile.ui.components.SkeletonList
+import com.hubmobile.ui.store.LocalStore
 import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupType
 
@@ -46,11 +48,17 @@ fun HomeScreen(
     me: User = Sample.me,
     repos: List<Repo> = Sample.repos,
     onRepo: (Repo) -> Unit = {},
+    onStar: (Repo) -> Unit = {},
     onQuick: (QuickItem) -> Unit = {},
     onLogin: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val T = Githup
+    // 星标存在 SharedPreferences 里，改完靠这个计数把列表重算一遍
+    var starTick by remember { mutableIntStateOf(0) }
+    val shown = remember(starTick, repos) {
+        repos.map { it.copy(starred = LocalStore.isStarred(it.fullName)) }
+    }
     LazyColumn(
         modifier = modifier
             .fillMaxSize()
@@ -60,7 +68,7 @@ fun HomeScreen(
             item { GuestCard(onLogin = onLogin) }
             item {
                 SectionTitle("热门仓库")
-                if (repos.isEmpty()) SkeletonList(4) else RepoCardList(repos, onRepo)
+                if (shown.isEmpty()) SkeletonList(4) else RepoCardList(shown, onRepo)
             }
             return@LazyColumn
         }
@@ -73,7 +81,7 @@ fun HomeScreen(
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Avatar(model = me.avatar, size = 40.dp)
+                    Avatar(size = 40.dp, url = me.avatar, contentDescription = me.login)
                     Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
                         Text(
                             me.name.ifEmpty { me.login },
@@ -125,12 +133,20 @@ fun HomeScreen(
             }
         }
 
-        if (repos.isEmpty()) {
+        if (shown.isEmpty()) {
             item { EmptyState(Octicons.Repo, "还没有仓库", "点击「新建」创建第一个仓库") }
         } else {
-            itemsIndexed(repos) { i, r ->
-                RepoRow(repo = r, onClick = { onRepo(r) })
-                if (i < repos.lastIndex) RowDivider()
+            itemsIndexed(shown) { i, r ->
+                RepoRow(
+                    repo = r,
+                    onClick = { onRepo(r) },
+                    onStar = {
+                        val on = LocalStore.toggleStar(r.fullName)
+                        starTick++
+                        onStar(r.copy(starred = on))
+                    }
+                )
+                if (i < shown.lastIndex) RowDivider()
             }
         }
     }

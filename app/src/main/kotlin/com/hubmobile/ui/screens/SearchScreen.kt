@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -77,7 +78,7 @@ fun SearchScreen(
                 items = RepoSort.values().map { SegItem(it, it.label) },
                 selected = sort,
                 onSelect = { sort = it },
-                modifier = Modifier.fillMaxWidth(0.62f)
+                modifier = Modifier.weight(0.62f)
             )
             GithupButton(
                 text = "筛选",
@@ -135,7 +136,7 @@ fun UserRow(user: User, onClick: () -> Unit) {
             .padding(horizontal = GithupDimens.rowPadH, vertical = GithupDimens.rowPadV),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Avatar(model = user.avatar, size = 32.dp)
+        Avatar(size = 32.dp, url = user.avatar, contentDescription = user.login)
         Column(modifier = Modifier.weight(1f).padding(start = 10.dp)) {
             Text(
                 user.name.ifEmpty { user.login },

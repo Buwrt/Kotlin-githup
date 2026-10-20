@@ -23,6 +23,7 @@ import com.hubmobile.ui.components.Avatar
 import com.hubmobile.ui.components.GithupCard
 import com.hubmobile.ui.components.Octicons
 import com.hubmobile.ui.components.SectionTitle
+import com.hubmobile.ui.store.LocalStore
 import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupDimens
 import com.hubmobile.ui.theme.GithupType
@@ -37,6 +38,7 @@ fun ProfileScreen(
     darkTheme: Boolean = false,
     onToggleTheme: () -> Unit = {},
     onSetting: (String) -> Unit = {},
+    onToggleNav: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val T = Githup
@@ -52,7 +54,7 @@ fun ProfileScreen(
                     modifier = Modifier.padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Avatar(model = me.avatar, size = 64.dp)
+                    Avatar(size = 64.dp, url = me.avatar, contentDescription = me.login)
                     Column(modifier = Modifier.weight(1f).padding(start = 12.dp)) {
                         Text(
                             me.name.ifEmpty { me.login },
@@ -95,9 +97,19 @@ fun ProfileScreen(
                 )
                 RowDivider()
                 SettingRow(
-                    icon = Octicons.Download,
-                    title = "下载管理",
-                    onClick = { onSetting("downloads") }
+                    icon = Octicons.ThreeBars,
+                    title = "底栏样式",
+                    subtitle = "悬浮玻璃胶囊 / 贴底实心栏",
+                    value = if (LocalStore.glassNav) "玻璃" else "朴素",
+                    onClick = onToggleNav
+                )
+                RowDivider()
+                SettingRow(
+                    icon = Octicons.Star,
+                    title = "本地收藏",
+                    subtitle = "只在记本机，不上传",
+                    value = LocalStore.starred().size.toString() + " 个",
+                    onClick = { onSetting("starred") }
                 )
             }
         }

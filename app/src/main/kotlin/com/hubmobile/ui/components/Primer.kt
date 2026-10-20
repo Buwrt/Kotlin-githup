@@ -63,7 +63,7 @@ import com.hubmobile.ui.theme.GithupType
 fun GithupCard(
     modifier: Modifier = Modifier,
     flat: Boolean = false,
-    content: @Composable ColumnScope.() -> Unit
+    content: @Composable () -> Unit
 ) {
     val T = Githup
     val shape = if (flat) RoundedCornerShape(0.dp) else RoundedCornerShape(GithupDimens.radius)
@@ -275,12 +275,9 @@ fun <T> Segmented(
                     .heightIn(min = 32.dp)
                     .background(if (active) T.bg else Color.Transparent)
                     .then(
-                        if (i < items.size - 1) {
-                            Modifier.border(
-                                1.dp, T.borderMuted,
-                                RoundedCornerShape(0.dp)
-                            )
-                        } else Modifier
+                        // 只在右侧画一条 1px 分隔线（对应 CSS 的 border-right），
+                        // 不能用 .border()：那会把四条边都描上
+                        if (i < items.size - 1) Modifier.drawRightDivider(T.borderMuted) else Modifier
                     )
                     .clickable { onSelect(item.key) }
                     .then(
@@ -314,6 +311,18 @@ private fun Modifier.drawBottomAccent(color: Color): Modifier =
             start = Offset(0f, size.height - 2.dp.toPx()),
             end = Offset(size.width, size.height - 2.dp.toPx()),
             strokeWidth = 2.dp.toPx()
+        )
+    }
+
+/** 段与段之间那条 1px 竖线 —— 对应 CSS 的 .seg button { border-right } */
+private fun Modifier.drawRightDivider(color: Color): Modifier =
+    drawWithContent {
+        drawContent()
+        drawLine(
+            color = color,
+            start = Offset(size.width - 1.dp.toPx(), 0f),
+            end = Offset(size.width - 1.dp.toPx(), size.height),
+            strokeWidth = 1.dp.toPx()
         )
     }
 
@@ -378,13 +387,21 @@ fun ChipRow(
 
 /* ============================ 头像 ============================ */
 
-/** .avatar —— 圆形（方形传 square = true）。尺寸档位与原 CSS 一致 */
+/**
+ * .avatar —— 圆形（方形传 square = true）。
+ *
+ * 这里刻意用「占位块」而不是接 Coil/Glide：本轮不引入图片加载库，
+ * 也就不会有网络权限和额外的依赖。要显示真头像时，把 `url` 交给
+ * rememberAsyncImagePainter 即可，形状与占位逻辑都不用动。
+ *
+ * 占位色用 --skeleton（#eaeef2 / #21262d），与原 CSS 一致。
+ */
 @Composable
 fun Avatar(
-    model: Any?,
     size: Dp = 32.dp,
     modifier: Modifier = Modifier,
     square: Boolean = false,
+    url: String = "",
     contentDescription: String? = null
 ) {
     val T = Githup
@@ -394,22 +411,20 @@ fun Avatar(
         modifier = modifier
             .size(size)
             .clip(shape)
-            .background(T.skeleton)
+            .background(T.skeleton),
+        contentAlignment = Alignment.Center
     ) {
-        // 图片加载交给调用方的 Coil / Glide；这里保留占位与形状契约
-        if (model != null) {
-            androidx.compose.foundation.Image(
-                painter = rememberAsyncPlaceholder(model),
-                contentDescription = contentDescription,
-                modifier = Modifier.size(size)
+        // 没有头像地址时，用 owner 首字符占位，避免整块灰圆
+        if (url.isEmpty()) {
+            Text(
+                text = (contentDescription?.firstOrNull() ?: '?').uppercaseChar().toString(),
+                color = T.fgSubtle,
+                fontSize = (size.value * 0.42f).sp,
+                fontWeight = FontWeight.SemiBold
             )
         }
     }
 }
-
-@Composable
-private fun rememberAsyncPlaceholder(model: Any): androidx.compose.ui.graphics.painter.Painter =
-    androidx.compose.ui.graphics.painter.ColorPainter(Githup.skeleton)
 
 /* ============================ 状态徽章 ============================ */
 
@@ -641,7 +656,7 @@ fun GithupFab(
 @Composable
 fun FilterBar(
     modifier: Modifier = Modifier,
-    content: @Composable () -> Unit
+    content: @Composable RowScope.() -> Unit
 ) {
     Row(
         modifier = modifier
@@ -649,7 +664,8 @@ fun FilterBar(
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = GithupDimens.pageGutter, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        content = { content() }
-    )
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        content()
+    }
 }

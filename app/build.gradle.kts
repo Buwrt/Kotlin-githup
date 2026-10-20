@@ -62,4 +62,7 @@ dependencies {
     implementation("androidx.compose.material3:material3")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    // Toast / 启动屏的延时用；Compose 的 LaunchedEffect 本身不引入协程
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }

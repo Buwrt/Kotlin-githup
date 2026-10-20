@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hubmobile.ui.components.GithupFab
 import com.hubmobile.ui.components.GithupTabBar
+import com.hubmobile.ui.components.ToastHost
 import com.hubmobile.ui.components.GithupTopBar
 import com.hubmobile.ui.components.NavStyle
 import com.hubmobile.ui.components.Octicons
@@ -50,6 +51,7 @@ import com.hubmobile.ui.screens.Sample
 import com.hubmobile.ui.screens.SearchScreen
 import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupDimens
+import com.hubmobile.ui.store.LocalStore
 import com.hubmobile.ui.theme.GithupTheme
 import kotlinx.coroutines.delay
 
@@ -58,10 +60,17 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // 与 githup 原生层一致：edge-to-edge，状态栏/导航栏透明
         enableEdgeToEdge()
+        LocalStore.init(this)
         setContent {
-            var dark by remember { mutableStateOf(false) }
+            var dark by remember { mutableStateOf(LocalStore.dark) }
+            var glassNav by remember { mutableStateOf(LocalStore.glassNav) }
             GithupTheme(darkTheme = dark) {
-                GithupApp(darkTheme = dark, onToggleTheme = { dark = !dark })
+                GithupApp(
+                    darkTheme = dark,
+                    onToggleTheme = { dark = !dark; LocalStore.dark = dark },
+                    navStyle = if (glassNav) NavStyle.Glass else NavStyle.Classic,
+                    onToggleNav = { glassNav = !glassNav; LocalStore.glassNav = glassNav }
+                )
             }
         }
     }
@@ -78,12 +87,14 @@ class MainActivity : ComponentActivity() {
 fun GithupApp(
     darkTheme: Boolean,
     onToggleTheme: () -> Unit,
-    navStyle: NavStyle = NavStyle.Glass
+    navStyle: NavStyle = NavStyle.Glass,
+    onToggleNav: () -> Unit = {}
 ) {
     val T = Githup
     var tab by remember { mutableIntStateOf(0) }
     var splash by remember { mutableStateOf(true) }
     var detailRepo by remember { mutableStateOf<com.hubmobile.ui.screens.Repo?>(null) }
+    var toast by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         delay(900)
@@ -116,8 +127,8 @@ fun GithupApp(
                             "切换主题", tint = T.fgMuted
                         )
                     }
-                    IconButton(onClick = { }, modifier = Modifier.size(GithupDimens.iconBtn)) {
-                        Icon(Octicons.Gear, "设置", tint = T.fgMuted)
+                    IconButton(onClick = onToggleNav, modifier = Modifier.size(GithupDimens.iconBtn)) {
+                        Icon(Octicons.ThreeBars, "切换底栏样式", tint = T.fgMuted)
                     }
                 }
             )
@@ -130,15 +141,22 @@ fun GithupApp(
                     .padding(bottom = GithupDimens.tabbarHeight + GithupDimens.tabbarLift + 8.dp)
             ) {
                 when {
-                    detailRepo != null -> RepoScreen(repo = detailRepo!!)
+                    detailRepo != null -> RepoScreen(
+                        repo = detailRepo!!,
+                        onStar = { toast = if (it.starred) "已收藏 ${it.fullName}" else "已取消收藏 ${it.fullName}" }
+                    )
                     else -> when (tab) {
-                        0 -> HomeScreen(onRepo = { detailRepo = it })
+                        0 -> HomeScreen(
+                            onRepo = { detailRepo = it },
+                            onStar = { toast = if (it.starred) "已收藏 ${it.fullName}" else "已取消收藏" }
+                        )
                         1 -> NotificationsScreen()
                         2 -> ExploreScreen(onRepo = { detailRepo = it })
                         3 -> SearchScreen(onRepo = { detailRepo = it })
                         else -> ProfileScreen(
                             darkTheme = darkTheme,
-                            onToggleTheme = onToggleTheme
+                            onToggleTheme = onToggleTheme,
+                            onToggleNav = onToggleNav
                         )
                     }
                 }
@@ -174,6 +192,9 @@ fun GithupApp(
                 style = navStyle
             )
         }
+
+        // 轻提示：底部居中、两秒半自动消失，不拦点击
+        ToastHost(message = toast, onDone = { toast = null })
 
         if (splash) SplashScreen()
     }

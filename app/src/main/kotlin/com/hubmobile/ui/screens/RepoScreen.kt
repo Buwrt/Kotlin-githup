@@ -1,6 +1,8 @@
 package com.hubmobile.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,11 +18,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -31,6 +35,7 @@ import com.hubmobile.ui.components.Segmented
 import com.hubmobile.ui.components.SectionTitle
 import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupDimens
+import com.hubmobile.ui.store.LocalStore
 import com.hubmobile.ui.theme.GithupType
 
 /**
@@ -43,10 +48,13 @@ import com.hubmobile.ui.theme.GithupType
 fun RepoScreen(
     repo: Repo = Sample.repos.first(),
     onBack: () -> Unit = {},
+    onStar: (Repo) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val T = Githup
     var tab by remember { mutableStateOf(RepoTab.Code) }
+    var starTick by remember { mutableIntStateOf(0) }
+    val starred = remember(starTick, repo) { LocalStore.isStarred(repo.fullName) }
 
     LazyColumn(modifier = modifier.fillMaxSize().background(T.canvas)) {
         item {
@@ -93,11 +101,42 @@ fun RepoScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
                         CountCell(Octicons.Star, formatCount(repo.stars))
+                        androidx.compose.foundation.layout.Spacer(Modifier.size(16.dp))
                         CountCell(Octicons.RepoForked, formatCount(repo.forks))
+                        androidx.compose.foundation.layout.Spacer(Modifier.size(16.dp))
                         CountCell(Octicons.Eye, "12")
+                        androidx.compose.foundation.layout.Spacer(Modifier.weight(1f))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(GithupDimens.radiusSm))
+                                .background(T.btnBg)
+                                .border(1.dp, T.btnBorder, RoundedCornerShape(GithupDimens.radiusSm))
+                                .clickable {
+                                    val on = LocalStore.toggleStar(repo.fullName)
+                                    starTick++
+                                    onStar(repo.copy(starred = on))
+                                }
+                                .padding(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(5.dp)
+                            ) {
+                                Icon(
+                                    if (starred) Octicons.StarFill else Octicons.Star,
+                                    null,
+                                    tint = if (starred) Color(0xFFE3B341) else T.fgMuted,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Text(
+                                    if (starred) "已收藏" else "收藏",
+                                    color = T.fg, fontSize = 12.sp, fontWeight = FontWeight.Medium
+                                )
+                            }
+                        }
                     }
                 }
             }
