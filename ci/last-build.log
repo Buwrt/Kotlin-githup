@@ -1,0 +1,110 @@
+== 关键错误 ==
+80:* What went wrong:
+81-Execution failed for task ':app:compileDebugKotlin'.
+82-> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+83-   > Compilation error. See log for more details
+84-
+85-* Try:
+86-> Run with --stacktrace option to get the stack trace.
+87-> Run with --info or --debug option to get more log output.
+88-> Run with --scan to get full insights.
+89-> Get more help at https://help.gradle.org.
+90-
+91-BUILD FAILED in 1m 59s
+92-22 actionable tasks: 22 executed
+
+== 编译错误行 ==
+43:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/MainActivity.kt:57:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+44:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/components/Primer.kt:53:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+45:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/components/Primer.kt:85:19 Argument type mismatch: actual type is '@Composable() androidx.compose.runtime.internal.ComposableFunction0<kotlin.Unit>', but '@Composable() androidx.compose.runtime.internal.ComposableFunction1<androidx.compose.foundation.layout.ColumnScope, kotlin.Unit>' was expected.
+46:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/components/Sheet.kt:44:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+47:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/components/TabBar.kt:45:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+48:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/Common.kt:45:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+49:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/Common.kt:75:45 Unresolved reference 'langColor'.
+50:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/Common.kt:82:34 Unresolved reference 'formatCount'.
+51:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/Common.kt:83:34 Unresolved reference 'formatCount'.
+52:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/ExploreScreen.kt:37:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+53:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/ExploreScreen.kt:143:45 Unresolved reference 'langColor'.
+54:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/ExploreScreen.kt:153:26 Unresolved reference 'formatCount'.
+55:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:37:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+56:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:53:15 Unresolved reference 'QuickItem'.
+57:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:93:52 Unresolved reference 'QuickItem'.
+58:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:98:17 Unresolved reference 'QuickGrid'.
+59:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:99:29 Cannot infer type for this parameter. Please specify it explicitly.
+60:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:100:25 Unresolved reference 'QuickItem'.
+61:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:100:25 Cannot infer type for this parameter. Please specify it explicitly.
+62:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:101:25 Unresolved reference 'QuickItem'.
+63:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:102:25 Unresolved reference 'QuickItem'.
+64:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:103:25 Unresolved reference 'QuickItem'.
+65:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:104:25 Unresolved reference 'QuickItem'.
+66:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:105:25 Unresolved reference 'QuickItem'.
+67:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/NotificationsScreen.kt:35:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+68:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/ProfileScreen.kt:30:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+69:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/RepoScreen.kt:40:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+70:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/RepoScreen.kt:95:49 Unresolved reference 'langColor'.
+71:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/RepoScreen.kt:107:50 Unresolved reference 'formatCount'.
+72:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/RepoScreen.kt:109:56 Unresolved reference 'formatCount'.
+73:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/RepoScreen.kt:115:34 Unresolved reference 'clip'.
+74:e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/SearchScreen.kt:10:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+
+== 末尾 ==
+> Task :app:compileDebugShaders NO-SOURCE
+> Task :app:generateDebugAssets UP-TO-DATE
+> Task :app:mergeDebugAssets
+> Task :app:compressDebugAssets
+> Task :app:desugarDebugFileDependencies
+> Task :app:processDebugResources
+> Task :app:checkDebugDuplicateClasses
+> Task :app:mergeDebugStartupProfile
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/MainActivity.kt:57:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/components/Primer.kt:53:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/components/Primer.kt:85:19 Argument type mismatch: actual type is '@Composable() androidx.compose.runtime.internal.ComposableFunction0<kotlin.Unit>', but '@Composable() androidx.compose.runtime.internal.ComposableFunction1<androidx.compose.foundation.layout.ColumnScope, kotlin.Unit>' was expected.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/components/Sheet.kt:44:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/components/TabBar.kt:45:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/Common.kt:45:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/Common.kt:75:45 Unresolved reference 'langColor'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/Common.kt:82:34 Unresolved reference 'formatCount'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/Common.kt:83:34 Unresolved reference 'formatCount'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/ExploreScreen.kt:37:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/ExploreScreen.kt:143:45 Unresolved reference 'langColor'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/ExploreScreen.kt:153:26 Unresolved reference 'formatCount'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:37:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:53:15 Unresolved reference 'QuickItem'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:93:52 Unresolved reference 'QuickItem'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:98:17 Unresolved reference 'QuickGrid'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:99:29 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:100:25 Unresolved reference 'QuickItem'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:100:25 Cannot infer type for this parameter. Please specify it explicitly.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:101:25 Unresolved reference 'QuickItem'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:102:25 Unresolved reference 'QuickItem'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:103:25 Unresolved reference 'QuickItem'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:104:25 Unresolved reference 'QuickItem'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/HomeScreen.kt:105:25 Unresolved reference 'QuickItem'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/NotificationsScreen.kt:35:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/ProfileScreen.kt:30:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/RepoScreen.kt:40:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/RepoScreen.kt:95:49 Unresolved reference 'langColor'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/RepoScreen.kt:107:50 Unresolved reference 'formatCount'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/RepoScreen.kt:109:56 Unresolved reference 'formatCount'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/RepoScreen.kt:115:34 Unresolved reference 'clip'.
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/kotlin/com/hubmobile/ui/screens/SearchScreen.kt:10:43 Cannot access 'val RowColumnParentData?.weight: Float': it is internal in file.
+
+> Task :app:mergeExtDexDebug
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 1m 59s
+22 actionable tasks: 22 executed
