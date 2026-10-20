@@ -32,7 +32,6 @@ import com.hubmobile.ui.components.Segmented
 import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupDimens
 import com.hubmobile.ui.theme.GithupType
-import androidx.compose.foundation.layout.weight
 
 /**
  * 通知 —— 顶部「全部 / 未读」分段，下面是通知列表。

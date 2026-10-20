@@ -42,7 +42,6 @@ import com.hubmobile.ui.components.RowMeta
 import com.hubmobile.ui.theme.Githup
 import com.hubmobile.ui.theme.GithupDimens
 import com.hubmobile.ui.theme.GithupType
-import androidx.compose.foundation.layout.weight
 
 /**
  * repoRow —— 仓库列表行。
@@ -245,4 +244,66 @@ fun kindIcon(kind: NotifyKind): ImageVector = when (kind) {
     NotifyKind.Release -> Octicons.Tag
     NotifyKind.Mention -> Octicons.Comment
     NotifyKind.Discussion -> Octicons.Comment
+}
+
+/**
+ * quickGrid —— 首页那块 3 列快捷入口（我的仓库 / Star / 议题 / PR / Gist / 组织）。
+ * 样式照前端：每项 20dp 图标 + 11sp 文字，格线用 1px 描边。
+ */
+@Composable
+fun QuickGrid(
+    items: List<QuickItem>,
+    onItem: (QuickItem) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val T = Githup
+    Column(modifier = modifier.fillMaxWidth()) {
+        items.chunked(3).forEach { rowItems ->
+            Row(modifier = Modifier.fillMaxWidth()) {
+                rowItems.forEach { item ->
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .border(1.dp, T.borderMuted)
+                            .clickable { onItem(item) }
+                            .padding(horizontal = 4.dp, vertical = 14.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(item.icon, null, tint = T.fgMuted, modifier = Modifier.size(20.dp))
+                        Text(item.label, color = T.fgMuted, fontSize = 11.sp, maxLines = 1)
+                    }
+                }
+            }
+        }
+    }
+}
+
+data class QuickItem(val label: String, val icon: ImageVector, val route: String)
+
+/** 语言色 —— GitHub 的语言色板（只列常见几种，未命中回落到中性色） */
+fun langColor(name: String): Color = when (name) {
+    "Kotlin" -> Color(0xFFA97BFF)
+    "Java" -> Color(0xFFB07219)
+    "Go" -> Color(0xFF00ADD8)
+    "Python" -> Color(0xFF3572A5)
+    "JavaScript" -> Color(0xFFF1E05A)
+    "TypeScript" -> Color(0xFF3178C6)
+    "Swift" -> Color(0xFFF05138)
+    "Rust" -> Color(0xFFDEA584)
+    "C" -> Color(0xFF555555)
+    "C++" -> Color(0xFFF34B7D)
+    "HTML" -> Color(0xFFE34C26)
+    "CSS" -> Color(0xFF563D7C)
+    "Shell" -> Color(0xFF89E051)
+    "Ruby" -> Color(0xFF701516)
+    else -> Color(0xFF8B949E)
+}
+
+fun formatCount(n: Int): String = when {
+    n >= 1000 -> {
+        val v = n / 1000.0
+        (if (v >= 10) v.toInt().toString() else String.format(Locale.US, "%.1f", v)) + "k"
+    }
+    else -> n.toString()
 }
