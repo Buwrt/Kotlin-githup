@@ -69,9 +69,9 @@ fun ProfileScreen(
                 }
                 // 统计：仓库 / 关注者 / 关注中
                 Row(modifier = Modifier.fillMaxWidth()) {
-                    StatCell(me.publicRepos.toString(), "仓库")
-                    StatCell(me.followers.toString(), "关注者")
-                    StatCell(me.following.toString(), "关注中")
+                    StatCell(me.publicRepos.toString(), "仓库", Modifier.weight(1f))
+                    StatCell(me.followers.toString(), "关注者", Modifier.weight(1f))
+                    StatCell(me.following.toString(), "关注中", Modifier.weight(1f))
                 }
             }
         }
@@ -145,11 +145,10 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun StatCell(value: String, label: String) {
+private fun StatCell(value: String, label: String, modifier: Modifier = Modifier) {
     val T = Githup
     Column(
-        modifier = Modifier
-            .weight(1f)
+        modifier = modifier
             .padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp)

@@ -1,5 +1,6 @@
 package com.hubmobile.ui.components
 
+import androidx.compose.foundation.layout.height
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut

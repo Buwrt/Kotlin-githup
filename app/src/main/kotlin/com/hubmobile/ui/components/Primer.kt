@@ -1,5 +1,12 @@
 package com.hubmobile.ui.components
 
+import LinearEasing
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -301,12 +308,12 @@ data class SegItem<T>(val key: T, val label: String)
 
 /** 选中项底部 2px 强调色条 —— 对应 CSS 的 box-shadow: inset 0 -2px 0 var(--accent) */
 private fun Modifier.drawBottomAccent(color: Color): Modifier =
-    androidx.compose.ui.draw.drawWithContent {
+    drawWithContent {
         drawContent()
         drawLine(
             color = color,
-            start = androidx.compose.ui.geometry.Offset(0f, size.height - 2.dp.toPx()),
-            end = androidx.compose.ui.geometry.Offset(size.width, size.height - 2.dp.toPx()),
+            start = Offset(0f, size.height - 2.dp.toPx()),
+            end = Offset(size.width, size.height - 2.dp.toPx()),
             strokeWidth = 2.dp.toPx()
         )
     }
@@ -588,12 +595,12 @@ private fun GithupProgressBar() {
 
 @Composable
 private fun rememberInfiniteTransitionBar(): Dp {
-    val inf = androidx.compose.animation.core.rememberInfiniteTransition(label = "bar")
+    val inf = rememberInfiniteTransition(label = "bar")
     val f by inf.animateFloat(
         initialValue = -1f,
         targetValue = 3.5f,
-        animationSpec = androidx.compose.animation.core.infiniteRepeatable(
-            animation = androidx.compose.animation.core.tween(1000, easing = androidx.compose.animation.core.LinearEasing)
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000, easing = LinearEasing)
         ),
         label = "barF"
     )
