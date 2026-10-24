@@ -45,35 +45,26 @@ jobs:
           ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee build-release.log
           echo "exit=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
 
-      - name: Commit logs via API
-        run: |
-          set -e
-          for f in build-debug.log build-release.log; do
-            [ -f "$f" ] || echo "(empty)" > "$f"
-            tail -n 400 "$f" > "tail-$f"
-            gh api -X PUT "repos/$OWNER/$REPO/contents/ci/$f" \
-              -f message="ci: 构建日志 $f (run ${GITHUB_RUN_NUMBER})" \
-              -f branch="$BRANCH" \
-              -F content=@"tail-$f" 2>/dev/null \
-              || gh api -X PUT "repos/$OWNER/$REPO/contents/ci/$f" \
-                   -f message="ci: 构建日志 $f (run ${GITHUB_RUN_NUMBER})" \
-                   -f branch="$BRANCH" \
-                   -f content="$(base64 -w0 tail-$f)"
-          done
-          echo "logs committed"
-
-      - name: Commit APKs via API
+      # 日志与 APK 都走 Contents API 写回仓库。
+      #
+      # 为什么不用 gh api：文件已存在时必须带 sha 才能覆盖，gh 的 -f 参数
+      # 不会自动补，于是第二次之后每次都 422；加上 set -e，一步失败就
+      # 把后面的 APK 提交一起跳过了 —— 表现是「编译成功却没有包」。
+      # 改用 Python 显式取 sha 再 PUT，且失败不中断（continue-on-error）。
+      - name: Commit logs and APKs via API
+        continue-on-error: true
         run: |
           python3 - <<'PYEOF'
           import base64, glob, hashlib, json, os, urllib.error, urllib.parse, urllib.request
 
           TOKEN = os.environ["GH_TOKEN"]
           OWNER, REPO, BRANCH = os.environ["OWNER"], os.environ["REPO"], os.environ["BRANCH"]
+          RUN = os.environ.get("GITHUB_RUN_NUMBER", "0")
           API = "https://api.github.com"
 
 
           def api_put(path, data, msg):
-              """用 Contents API 写一个文件；已存在时先取 sha 才能覆盖。"""
+              """写一个文件到仓库；已存在时先取 sha 才能覆盖。"""
               body = {"message": msg, "branch": BRANCH,
                       "content": base64.b64encode(data).decode()}
               try:
@@ -102,7 +93,16 @@ jobs:
                   print("FAILED", path, e.code, e.read().decode()[:300])
 
 
-          # 产物名固定，与 App 内更新检测拼直链时用的名字一致
+          # 1) 构建日志（尾部 400 行）
+          for f in ("build-debug.log", "build-release.log"):
+              try:
+                  raw = open(f, "rb").read()
+              except FileNotFoundError:
+                  raw = b"(empty)\n"
+              tail = b"\n".join(raw.split(b"\n")[-400:])
+              api_put(f"ci/{f}", tail, f"ci: 构建日志 {f} (run {RUN})")
+
+          # 2) APK + sha256
           for variant, d, name in [
               ("debug", "app/build/outputs/apk/debug", "githup-debug.apk"),
               ("release", "app/build/outputs/apk/release", "githup-release.apk"),
@@ -114,7 +114,7 @@ jobs:
               src = apks[0]
               blob = open(src, "rb").read()
               print("uploading", variant, src, len(blob), "bytes")
-              api_put(f"apk/{name}", blob, f"ci: {variant} APK (run {os.environ['GITHUB_RUN_NUMBER']})")
+              api_put(f"apk/{name}", blob, f"ci: {variant} APK (run {RUN})")
               api_put(f"apk/{name}.sha256",
                       (hashlib.sha256(blob).hexdigest() + "\n").encode(),
                       f"ci: {name} sha256")
