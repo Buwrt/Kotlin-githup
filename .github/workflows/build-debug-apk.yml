@@ -64,28 +64,64 @@ jobs:
 
       - name: Commit APKs via API
         run: |
-          set -e
-          for pair in "debug:app/build/outputs/apk/debug:githup-debug.apk" "release:app/build/outputs/apk/release:githup-release.apk"; do
-            VARIANT=$(echo "$pair" | cut -d: -f1)
-            DIR=$(echo "$pair" | cut -d: -f2)
-            NAME=$(echo "$pair" | cut -d: -f3)
-            APK=$(ls "$DIR"/*.apk 2>/dev/null | head -1 || true)
-            if [ -z "$APK" ]; then echo "no $VARIANT apk"; continue; fi
-            echo "uploading $VARIANT: $APK ($(stat -c%s "$APK") bytes)"
-            gh api -X PUT "repos/$OWNER/$REPO/contents/apk/$NAME" \
-              -f message="ci: $VARIANT APK (run ${GITHUB_RUN_NUMBER})" \
-              -f branch="$BRANCH" \
-              -f content="$(base64 -w0 "$APK")"
-            sha256sum "$APK" | awk '{print $1}' > "$NAME.sha256"
-            gh api -X PUT "repos/$OWNER/$REPO/contents/apk/$NAME.sha256" \
-              -f message="ci: $NAME sha256" \
-              -f branch="$BRANCH" \
-              -f content="$(base64 -w0 "$NAME.sha256")"
-          done
-          echo "apks committed"
+          python3 - <<'PYEOF'
+          import base64, glob, hashlib, json, os, urllib.error, urllib.parse, urllib.request
+
+          TOKEN = os.environ["GH_TOKEN"]
+          OWNER, REPO, BRANCH = os.environ["OWNER"], os.environ["REPO"], os.environ["BRANCH"]
+          API = "https://api.github.com"
+
+
+          def api_put(path, data, msg):
+              """用 Contents API 写一个文件；已存在时先取 sha 才能覆盖。"""
+              body = {"message": msg, "branch": BRANCH,
+                      "content": base64.b64encode(data).decode()}
+              try:
+                  r = urllib.request.Request(
+                      f"{API}/repos/{OWNER}/{REPO}/contents/{urllib.parse.quote(path)}?ref={BRANCH}",
+                      headers={"Authorization": "Bearer " + TOKEN,
+                               "Accept": "application/vnd.github+json",
+                               "User-Agent": "ci"})
+                  with urllib.request.urlopen(r, timeout=60) as z:
+                      sha = json.loads(z.read().decode()).get("sha")
+                  if sha:
+                      body["sha"] = sha
+              except Exception:
+                  pass
+              req = urllib.request.Request(
+                  f"{API}/repos/{OWNER}/{REPO}/contents/{urllib.parse.quote(path)}",
+                  data=json.dumps(body).encode(), method="PUT",
+                  headers={"Authorization": "Bearer " + TOKEN,
+                           "Accept": "application/vnd.github+json",
+                           "Content-Type": "application/json",
+                           "User-Agent": "ci"})
+              try:
+                  with urllib.request.urlopen(req, timeout=240) as z:
+                      print("uploaded", path, len(data), "bytes")
+              except urllib.error.HTTPError as e:
+                  print("FAILED", path, e.code, e.read().decode()[:300])
+
+
+          # 产物名固定，与 App 内更新检测拼直链时用的名字一致
+          for variant, d, name in [
+              ("debug", "app/build/outputs/apk/debug", "githup-debug.apk"),
+              ("release", "app/build/outputs/apk/release", "githup-release.apk"),
+          ]:
+              apks = sorted(glob.glob(d + "/*.apk"))
+              if not apks:
+                  print("no", variant, "apk")
+                  continue
+              src = apks[0]
+              blob = open(src, "rb").read()
+              print("uploading", variant, src, len(blob), "bytes")
+              api_put(f"apk/{name}", blob, f"ci: {variant} APK (run {os.environ['GITHUB_RUN_NUMBER']})")
+              api_put(f"apk/{name}.sha256",
+                      (hashlib.sha256(blob).hexdigest() + "\n").encode(),
+                      f"ci: {name} sha256")
+          PYEOF
 
       - name: Upload APK artifact
-        if: steps.d.outputs.exit == '0' || steps.r.outputs.exit == '0'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: githup-apks
@@ -93,3 +129,4 @@ jobs:
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk
           if-no-files-found: warn
+          retention-days: 90
