@@ -1,7 +1,4 @@
-package com.hubmobile.app;
-
-import java.util.ArrayList;
-import java.util.List;
+package com.hubmobile.app
 
 /**
  * 下载地址的候选通道：**直连 + 若干加速镜像**。
@@ -14,13 +11,16 @@ import java.util.List;
  *
  * 这里只放**纯逻辑**（不碰任何 Android API），这样能直接在 JVM 上跑单元测试，
  * 不用 Robolectric。真正发起下载的是 JsBridge。
+ *
+ * 【Kotlin 迁移】
+ *   这个类是全项目最「纯」的一个：不 import 任何 android.*，纯字符串处理。
+ *   迁移后依然不碰 Android API —— tools/probe-channels.py 与 SwitchSim 会
+ *   按行读这个文件抽通道清单，保持零依赖才能让它们继续直接在 JVM 上跑。
  */
-final class DownloadChannels {
-
-    private DownloadChannels() { }
+internal object DownloadChannels {
 
     /** 「直连」这条通道的稳定标识 */
-    static final String DIRECT = "direct";
+    const val DIRECT = "direct"
 
     /**
      * 「限速」这条通道的稳定标识。
@@ -34,7 +34,7 @@ final class DownloadChannels {
      * 这只有自己拿着字节流才做得到。DownloadManager 给不了这个粒度
      * （它的 pause/resume 是分钟级的手感，精确到 KB/s 是妄想）。
      */
-    static final String THROTTLED = "throttled";
+    const val THROTTLED = "throttled"
 
     /**
      * 可用的加速镜像前缀（拼法：前缀 + 完整原 URL）。
@@ -140,7 +140,7 @@ final class DownloadChannels {
      * 把地址拆开重组成 `/gh/{owner}/{repo}@{ref}/{path}`。
      *
      * 所以它在 MIRRORS 里是一个**占位标记**（就写域名前缀），真正拼 URL
-     * 走 {@link #buildUrl} —— 不能拿它去 `前缀 + 原URL`，那样拼出来是
+     * 走 buildUrl —— 不能拿它去 `前缀 + 原URL`，那样拼出来是
      * `fastly.jsdelivr.net/https://github.com/...`，必然 404。
      *
      * ═══ 只对 raw 文件生效 ═══
@@ -166,55 +166,57 @@ final class DownloadChannels {
      *   ghps.cc              —— HTTP 403（和 githup 历史记录一致，当年是
      *                           「下到 208KB 就断」，现在直接拒）
      */
-    static final String TEMPLATED = "https://fastly.jsdelivr.net/";
+    const val TEMPLATED = "https://fastly.jsdelivr.net/"
 
     /** 这条通道是不是「模板型」（不能用「前缀 + 原 URL」拼） */
-    static boolean isTemplated(String m) {
-        return m != null && m.startsWith(TEMPLATED);
-    }
+    @JvmStatic
+    fun isTemplated(m: String?): Boolean = m != null && m.startsWith(TEMPLATED)
 
     /**
      * 把 raw 类地址改写成云速（jsdelivr）的地址。
      *
      * @return 拼好的地址；不是 raw 类地址（或抠不出字段）返回 null
      */
-    static String templatedUrl(String url) {
-        if (url == null || url.isEmpty()) return null;
-        String h = hostOf(url);
-        if (h == null) return null;
-        if (!"raw.githubusercontent.com".equals(h) && !"github.com".equals(h)) return null;
+    @JvmStatic
+    fun templatedUrl(url: String?): String? {
+        if (url == null || url.isEmpty()) return null
+        val h = hostOf(url) ?: return null
+        if ("raw.githubusercontent.com" != h && "github.com" != h) return null
 
-        int scheme = url.indexOf("://");
-        String rest = scheme < 0 ? url : url.substring(scheme + 3);
-        int pathStart = rest.indexOf('/');
-        if (pathStart < 0) return null;
+        val scheme = url.indexOf("://")
+        val rest = if (scheme < 0) url else url.substring(scheme + 3)
+        val pathStart = rest.indexOf('/')
+        if (pathStart < 0) return null
         /* 去掉 query / fragment */
-        int end = rest.length();
-        for (int i = pathStart; i < rest.length(); i++) {
-            char c = rest.charAt(i);
-            if (c == '?' || c == '#') { end = i; break; }
+        var end = rest.length
+        for (i in pathStart until rest.length) {
+            val c = rest[i]
+            if (c == '?' || c == '#') { end = i; break }
         }
-        String path = rest.substring(pathStart, end);
+        val path = rest.substring(pathStart, end)
 
-        java.util.List<String> sg = new ArrayList<>();
-        for (String x : path.split("/")) if (!x.isEmpty()) sg.add(x);
+        val sg = ArrayList<String>()
+        for (x in path.split("/")) if (x.isNotEmpty()) sg.add(x)
 
-        String owner, repo, ref, tail;
-        if ("raw.githubusercontent.com".equals(h)) {
+        val owner: String
+        val repo: String
+        val ref: String
+        val tail: String
+        if ("raw.githubusercontent.com" == h) {
             /* /owner/repo/ref/path...  至少 4 段 */
-            if (sg.size() < 4) return null;
-            owner = sg.get(0); repo = sg.get(1); ref = sg.get(2);
-            tail = String.join("/", sg.subList(3, sg.size()));
+            if (sg.size < 4) return null
+            owner = sg[0]; repo = sg[1]; ref = sg[2]
+            tail = sg.subList(3, sg.size).joinToString("/")
         } else {
             /* /owner/repo/blob|raw/ref/path...  至少 5 段 */
-            if (sg.size() < 5) return null;
-            String verb = sg.get(2);
-            if (!"raw".equals(verb) && !"blob".equals(verb)) return null;
-            owner = sg.get(0); repo = sg.get(1); ref = sg.get(3);
-            tail = String.join("/", sg.subList(4, sg.size()));
+            if (sg.size < 5) return null
+            val verb = sg[2]
+            if ("raw" != verb && "blob" != verb) return null
+            owner = sg[0]; repo = sg[1]; ref = sg[3]
+            tail = sg.subList(4, sg.size).joinToString("/")
         }
-        if (owner.isEmpty() || repo.isEmpty() || ref.isEmpty() || tail.isEmpty()) return null;
-        return TEMPLATED + "gh/" + owner + "/" + repo + "@" + ref + "/" + tail;
+        if (owner.isEmpty() || repo.isEmpty() || ref.isEmpty() || tail.isEmpty()) return null
+        return TEMPLATED + "gh/" + owner + "/" + repo + "@" + ref + "/" + tail
     }
 
     /**
@@ -226,10 +228,11 @@ final class DownloadChannels {
      * @return 拼好的地址；这条通道不适用（比如云速遇到 Release 附件）返回 null，
      *         调用方应当跳过
      */
-    static String buildUrl(String m, String url) {
-        if (m == null || m.isEmpty() || url == null) return null;
-        if (isTemplated(m)) return templatedUrl(url);
-        return m + url;
+    @JvmStatic
+    fun buildUrl(m: String?, url: String?): String? {
+        if (m == null || m.isEmpty() || url == null) return null
+        if (isTemplated(m)) return templatedUrl(url)
+        return m + url
     }
 
     /**
@@ -239,65 +242,64 @@ final class DownloadChannels {
      * 根本不认。以前面板上只写一个「不可用」，用户就以为这条坏了 ——
      * 实际上它是**这一类文件用不上**，不是坏了。写清楚省得误会。
      */
-    static String scopeOf(String m) {
-        if (isTemplated(m)) return "仅仓库文件";
-        return "";
-    }
+    @JvmStatic
+    fun scopeOf(m: String?): String = if (isTemplated(m)) "仅仓库文件" else ""
 
     /** 这条通道对 url 适不适用（云速遇到 Release 附件就不适用） */
-    static boolean appliesTo(String m, String url) {
-        return buildUrl(m, url) != null;
-    }
+    @JvmStatic
+    fun appliesTo(m: String?, url: String?): Boolean = buildUrl(m, url) != null
 
-    static final String[] MIRRORS = {
-            /* —— 第一组：CI 实测可用，按速度排序 —— */
-            /*
-              cdn.gh-proxy.org —— 云析（YunX）的默认 GitHub 镜像。
+    @JvmField
+    val MIRRORS: Array<String> = arrayOf(
+        /* —— 第一组：CI 实测可用，按速度排序 —— */
+        /*
+          cdn.gh-proxy.org —— 云析（YunX）的默认 GitHub 镜像。
 
-              从 CYQawa/YunX 的 UpdateChecker 里查到的：
+          从 CYQawa/YunX 的 UpdateChecker 里查到的：
 
-                  const val MIRROR_PREFIX = "https://cdn.gh-proxy.org/"
-                  fun mirrorUrl(url, prefix = MIRROR_PREFIX) = prefix + url
+              const val MIRROR_PREFIX = "https://cdn.gh-proxy.org/"
+              fun mirrorUrl(url, prefix = MIRROR_PREFIX) = prefix + url
 
-              跟这里的 MIRRORS 是同一种东西：URL 前缀镜像，拼上原地址就行。
+          跟这里的 MIRRORS 是同一种东西：URL 前缀镜像，拼上原地址就行。
 
-              CI 实测（真实公网出口，目标 = 本仓库 v1.2.15 的 APK）：
+          CI 实测（真实公网出口，目标 = 本仓库 v1.2.15 的 APK）：
 
-                  cdn.gh-proxy.org  HTTP 200  ttfb 145ms  21709 KB/s
-                  gh-proxy.com      HTTP 200  ttfb 107ms  12226 KB/s   （原加速 1）
-                  直连               HTTP 200  ttfb  96ms 112622 KB/s  （runner 在美国）
+              cdn.gh-proxy.org  HTTP 200  ttfb 145ms  21709 KB/s
+              gh-proxy.com      HTTP 200  ttfb 107ms  12226 KB/s   （原加速 1）
+              直连               HTTP 200  ttfb  96ms 112622 KB/s  （runner 在美国）
 
-              比原加速 1 快约 78%。放第一位。
-            */
-            "https://cdn.gh-proxy.org/",        /* 云析通道，21709 KB/s */
-            TEMPLATED,                          /* 云速通道（jsdelivr），只对 raw 生效 */
-            "https://gh-proxy.com/",            /* 1.2 MB/s */
-            "https://gh.llkk.cc/",              /* 1.2 MB/s，TTFB 94ms 最快 */
-            "https://cors.isteed.cc/",          /* 1.2 MB/s */
-            "https://gh-proxy.at9.net/",        /* 1.2 MB/s */
-            "https://gh.noki.icu/",             /* 1.2 MB/s */
-            "https://ghfile.geekertao.top/",    /* 1.2 MB/s（限流，降速复核通过）*/
-            "https://ghproxy.net/",             /* 432 KB/s */
-            "https://ghfast.top/",              /* 130 KB/s，TTFB 8.9s 偏慢 */
-            /* —— 第二组：CI 的海外 IP 被拒，国内可能正常，保留待观察 —— */
-            "https://ghproxy.imciel.com/",      /* 429 限流 */
-            "https://gh.idayer.com/",           /* 429 限流 */
-            "https://gh.ddlc.top/",             /* 429 限流 */
-            "https://github.boki.moe/",         /* 403 */
-            "https://gh.h233.eu.org/",          /* 403 */
-            "https://proxy.vvvv.ee/",           /* 403 */
-            "https://ghproxy.homeboyc.cn/",     /* 403 */
-            "https://gh.zwy.one/",              /* 连接超时 */
-    };
+          比原加速 1 快约 78%。放第一位。
+        */
+        "https://cdn.gh-proxy.org/",        /* 云析通道，21709 KB/s */
+        TEMPLATED,                          /* 云速通道（jsdelivr），只对 raw 生效 */
+        "https://gh-proxy.com/",            /* 1.2 MB/s */
+        "https://gh.llkk.cc/",              /* 1.2 MB/s，TTFB 94ms 最快 */
+        "https://cors.isteed.cc/",          /* 1.2 MB/s */
+        "https://gh-proxy.at9.net/",        /* 1.2 MB/s */
+        "https://gh.noki.icu/",             /* 1.2 MB/s */
+        "https://ghfile.geekertao.top/",    /* 1.2 MB/s（限流，降速复核通过）*/
+        "https://ghproxy.net/",             /* 432 KB/s */
+        "https://ghfast.top/",              /* 130 KB/s，TTFB 8.9s 偏慢 */
+        /* —— 第二组：CI 的海外 IP 被拒，国内可能正常，保留待观察 —— */
+        "https://ghproxy.imciel.com/",      /* 429 限流 */
+        "https://gh.idayer.com/",           /* 429 限流 */
+        "https://gh.ddlc.top/",             /* 429 限流 */
+        "https://github.boki.moe/",         /* 403 */
+        "https://gh.h233.eu.org/",          /* 403 */
+        "https://proxy.vvvv.ee/",           /* 403 */
+        "https://ghproxy.homeboyc.cn/",     /* 403 */
+        "https://gh.zwy.one/"               /* 连接超时 */
+    )
 
     /** CI 实测可用的条数（第一组），界面上用来区分标注 */
-    static final int VERIFIED_COUNT = 10;
+    const val VERIFIED_COUNT = 10
 
     /** 只有这些域名的下载地址才允许走加速镜像（别把无关链接也送去代理） */
-    static final String[] MIRRORABLE_HOSTS = {
-            "github.com", "objects.githubusercontent.com",
-            "raw.githubusercontent.com", "codeload.github.com",
-    };
+    @JvmField
+    val MIRRORABLE_HOSTS: Array<String> = arrayOf(
+        "github.com", "objects.githubusercontent.com",
+        "raw.githubusercontent.com", "codeload.github.com"
+    )
 
     /**
      * 要「劝」用户点 Star 的仓库 —— 也就是本软件自己的开源地址。
@@ -308,8 +310,8 @@ final class DownloadChannels {
      * 未登录也算「没点过」：查不了就默认没有，这是刻意的选择 ——
      * 否则「退出登录」就成了绕过限速的口子，这个功能立刻失去意义。
      */
-    static final String STAR_OWNER = "Buwrt";
-    static final String STAR_REPO = "githup";
+    const val STAR_OWNER = "Buwrt"
+    const val STAR_REPO = "githup"
 
     /**
      * 这个地址是不是本软件自己仓库（Buwrt/githup）的东西。
@@ -318,52 +320,53 @@ final class DownloadChannels {
      * （见 JsBridge.enqueueDownload）。留着它是为了「以后想把限速
      * 收窄到只对自己的包」时能直接用，别把它当成当前的判定逻辑。
      */
-    static boolean isSelfRepoDownload(String url) {
-        if (url == null || url.isEmpty()) return false;
-        String h = hostOf(url);
-        if (h == null) return false;
-        boolean ghHost = false;
-        for (String m : MIRRORABLE_HOSTS) {
-            if (h.equals(m) || h.endsWith("." + m)) { ghHost = true; break; }
+    @JvmStatic
+    fun isSelfRepoDownload(url: String?): Boolean {
+        if (url == null || url.isEmpty()) return false
+        val h = hostOf(url) ?: return false
+        var ghHost = false
+        for (m in MIRRORABLE_HOSTS) {
+            if (h == m || h.endsWith(".$m")) { ghHost = true; break }
         }
-        if (!ghHost) return false;
+        if (!ghHost) return false
         /* 路径里要出现 /Buwrt/githup/ 这一段（大小写不敏感）。
          * 用 contains 而不是 equals：地址可能是
          *   github.com/Buwrt/githup/releases/download/v1.2.15/xxx.apk
          *   raw.githubusercontent.com/Buwrt/githup/main/...
          *   codeload.github.com/Buwrt/githup/tar.gz/...
          * 只要仓库这一段对得上就算。 */
-        String lower = url.toLowerCase();
-        String needle = "/" + STAR_OWNER.toLowerCase() + "/" + STAR_REPO.toLowerCase() + "/";
-        return lower.contains(needle);
+        val lower = url.lowercase()
+        val needle = "/" + STAR_OWNER.lowercase() + "/" + STAR_REPO.lowercase() + "/"
+        return lower.contains(needle)
     }
 
     /** 从 URL 里抠出主机名。不走 Uri.parse —— 那样就没法脱离 Android 单测了 */
-    static String hostOf(String url) {
-        if (url == null) return null;
-        int scheme = url.indexOf("://");
-        String rest = scheme < 0 ? url : url.substring(scheme + 3);
-        int end = rest.length();
-        for (int i = 0; i < rest.length(); i++) {
-            char c = rest.charAt(i);
-            if (c == '/' || c == '?' || c == '#') { end = i; break; }
+    @JvmStatic
+    fun hostOf(url: String?): String? {
+        if (url == null) return null
+        val scheme = url.indexOf("://")
+        val rest = if (scheme < 0) url else url.substring(scheme + 3)
+        var end = rest.length
+        for (i in rest.indices) {
+            val c = rest[i]
+            if (c == '/' || c == '?' || c == '#') { end = i; break }
         }
-        String hostPort = rest.substring(0, end);
-        int at = hostPort.lastIndexOf('@');
-        if (at >= 0) hostPort = hostPort.substring(at + 1);
-        int colon = hostPort.lastIndexOf(':');
-        if (colon >= 0) hostPort = hostPort.substring(0, colon);
-        return hostPort.isEmpty() ? null : hostPort.toLowerCase();
+        var hostPort = rest.substring(0, end)
+        val at = hostPort.lastIndexOf('@')
+        if (at >= 0) hostPort = hostPort.substring(at + 1)
+        val colon = hostPort.lastIndexOf(':')
+        if (colon >= 0) hostPort = hostPort.substring(0, colon)
+        return if (hostPort.isEmpty()) null else hostPort.lowercase()
     }
 
     /** 这个地址能不能走加速镜像 */
-    static boolean isMirrorable(String url) {
-        String h = hostOf(url);
-        if (h == null) return false;
-        for (String m : MIRRORABLE_HOSTS) {
-            if (h.equals(m) || h.endsWith("." + m)) return true;
+    @JvmStatic
+    fun isMirrorable(url: String?): Boolean {
+        val h = hostOf(url) ?: return false
+        for (m in MIRRORABLE_HOSTS) {
+            if (h == m || h.endsWith(".$m")) return true
         }
-        return false;
+        return false
     }
 
     /**
@@ -392,21 +395,23 @@ final class DownloadChannels {
      * 真正带签名的是 Actions 产物的 `archive_download_url`，它的域名是
      * api.github.com，本来就不在 MIRRORABLE_HOSTS 里，永远只会直连。
      */
-    static boolean hasAuthHeader(String headersJson) {
-        if (headersJson == null || headersJson.isEmpty()) return false;
-        String s = headersJson.toLowerCase();
-        return s.contains("authorization") || s.contains("bearer ") || s.contains("\"token\"");
+    @JvmStatic
+    fun hasAuthHeader(headersJson: String?): Boolean {
+        if (headersJson == null || headersJson.isEmpty()) return false
+        val s = headersJson.lowercase()
+        return s.contains("authorization") || s.contains("bearer ") || s.contains("\"token\"")
     }
 
     /** 这条 URL 走的是哪条通道（稳定标识，用于记住「上次哪条通的」） */
-    static String channelKey(String url) {
-        if (isThrottled(url)) return THROTTLED;
+    @JvmStatic
+    fun channelKey(url: String?): String {
+        if (isThrottled(url)) return THROTTLED
         if (url != null) {
-            for (String m : MIRRORS) {
-                if (url.startsWith(m)) return m;
+            for (m in MIRRORS) {
+                if (url.startsWith(m)) return m
             }
         }
-        return DIRECT;
+        return DIRECT
     }
 
     /**
@@ -422,34 +427,35 @@ final class DownloadChannels {
      * 第 3 条（gh-proxy.com）就是「加速1」，往后顺延。这样两条有名字的
      * 通道占前两位，「加速N」这批自己从 1 开始编号，读起来是连着的。
      */
-    static String channelLabel(int index) {
-        if (index == 0) return "云析通道";
-        if (index == 1) return "云速通道";
-        return "加速" + (index - 1);
+    @JvmStatic
+    fun channelLabel(index: Int): String {
+        if (index == 0) return "云析通道"
+        if (index == 1) return "云速通道"
+        return "加速" + (index - 1)
     }
 
     /** 给进度条看的通道名，如「云析通道」/「云速通道」/「加速1」/「直连」/「限速」 */
-    static String channelName(String url) {
-        if (isThrottled(url)) return "限速";
+    @JvmStatic
+    fun channelName(url: String?): String {
+        if (isThrottled(url)) return "限速"
         if (url != null) {
-            for (int i = 0; i < MIRRORS.length; i++) {
-                if (url.startsWith(MIRRORS[i])) return channelLabel(i);
+            for (i in MIRRORS.indices) {
+                if (url.startsWith(MIRRORS[i])) return channelLabel(i)
             }
         }
-        return "直连";
+        return "直连"
     }
 
     /**
      * 这是不是「限速」那条占位通道。
      *
      * 判断写在 channelKey / channelName 之外单独一个方法，是因为 JsBridge
-     * 拿到候选链之后要逐条问「这条是不是限速」—— 它不认识 {@link #THROTTLED}
+     * 拿到候选链之后要逐条问「这条是不是限速」—— 它不认识 THROTTLED
      * 这个常量还好，就怕有人哪天把常量值改了却漏改了判断，那样限速会
      * 悄悄退化成「一条拼不出来的 URL」，下载直接就失败了，还查不出原因。
      */
-    static boolean isThrottled(String url) {
-        return THROTTLED.equals(url);
-    }
+    @JvmStatic
+    fun isThrottled(url: String?): Boolean = THROTTLED == url
 
     /**
      * 生成「限速」候选链：只放一条，就是那个占位标记。
@@ -462,10 +468,11 @@ final class DownloadChannels {
      * 直接调 startThrottledDownload（自研下载器），压根不碰候选链。
      * 留着是为「以后想把它接回候选链」时用。
      */
-    static List<String> throttledCandidates() {
-        List<String> out = new ArrayList<>();
-        out.add(THROTTLED);
-        return out;
+    @JvmStatic
+    fun throttledCandidates(): MutableList<String> {
+        val out = ArrayList<String>()
+        out.add(THROTTLED)
+        return out
     }
 
     /**
@@ -473,12 +480,13 @@ final class DownloadChannels {
      *
      * @param url         原始下载地址
      * @param allowMirror 是否允许走镜像（带令牌时必须传 false）
-     * @param lastChannel 上次成功走通的通道（{@link #DIRECT} 或某个镜像前缀），
+     * @param lastChannel 上次成功走通的通道（DIRECT 或某个镜像前缀），
      *                    传空串表示没有记录 —— 用户网络通常稳定，命中就能
      *                    省掉一轮「先慢后换」的等待
      */
-    static List<String> candidates(String url, boolean allowMirror) {
-        List<String> out = new ArrayList<>();
+    @JvmStatic
+    fun candidates(url: String, allowMirror: Boolean): MutableList<String> {
+        val out = ArrayList<String>()
         if (allowMirror && isMirrorable(url)) {
             /*
               固定顺序，不再按「上次哪条通」重排。
@@ -488,11 +496,11 @@ final class DownloadChannels {
               而那条通道此刻未必还快。固定顺序的行为可预期：慢了就走
               switchChannel 换道，不靠猜。
             */
-            for (String m : MIRRORS) {
-                String u = buildUrl(m, url);
+            for (m in MIRRORS) {
+                val u = buildUrl(m, url)
                 /* 云速对 Release 附件不适用，拼不出来就跳过 —— 放一条
                    必然 404 的地址进去只会白白浪费一轮换道。 */
-                if (u != null) out.add(u);
+                if (u != null) out.add(u)
             }
         }
         /*
@@ -514,7 +522,7 @@ final class DownloadChannels {
           永久改写全局顺序 —— 正是因为这个结论，「记住上次通道」那套机制
           在 1.2.15 被整个移除了。
         */
-        out.add(url);
-        return out;
+        out.add(url)
+        return out
     }
 }

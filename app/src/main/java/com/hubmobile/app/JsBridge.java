@@ -65,9 +65,8 @@ public class JsBridge {
      * 国内要挂满连接超时），瞬间把池子占满，页面自己的数据请求只能在后面
      * 排队 —— 表现就是打开了翻译之后，页面骨架屏转个不停。 */
     private final ExecutorService pool = Executors.newFixedThreadPool(8);
-    private static final String TOKEN_KEY = "gh_token";
-    /** README 图片代理：由 MainActivity 建好后交过来，详见 ImageProxy */
-    private ImageProxy imageProxy;
+    /* 包可见：令牌键名，PrefsBridge 也要用（同包，不再 private）。 */
+    static final String TOKEN_KEY = "gh_token";
 
     /** 申请媒体权限的请求码（结果由 MainActivity 转发回来）。 */
     static final int REQ_MEDIA_PERM = 4712;
@@ -78,12 +77,48 @@ public class JsBridge {
     /** 申请相机权限的请求码（两步验证器「扫一扫」用；结果由 MainActivity 转发回来） */
     static final int REQ_CAMERA_PERM = 4714;
 
-    /** 扫一扫：正在等系统权限框结果的那次 JS 回调 id。 */
-    private String pendingCameraId;
+    /* ---- 已经拆出去的桥接模块 ----
+     * 见各模块文件顶部的说明。这里只留「窗口」——@JavascriptInterface 方法
+     * 一个不少、签名一个不变，实现搬到了对应模块里，前端调用方式不受影响。 */
+    private final NotifBridge notif;
+    private final LogBridge logs;
+    private final PrefsBridge prefs;
+    private final DeviceBridge device;
+    private final NetBridge net;
+    private final UiBridge ui;
+    private final FileBridge files;
+    private final AppInfoBridge appInfo;
+    private final BrowserBridge browser;
+    private final SaveImageBridge saveImage;
+
+    /** 模块共用的宿主上下文（Activity / 线程池 / 往前端发代码的出口） */
+    private final BridgeContext bridgeCtx;
 
     JsBridge(Activity activity, WebView webView) {
         this.activity = activity;
         this.webView = webView;
+        /*
+         * 第三个参数是 Kotlin 的函数类型 (String) -> Unit。Java 这边没有
+         * Unit，直接写 this::runJs 会因为「void 不是 Unit」编译不过 ——
+         * 所以显式返回 kotlin.Unit.INSTANCE。
+         */
+        bridgeCtx = new BridgeContext(activity, pool, js -> {
+            runJs(js);
+            return kotlin.Unit.INSTANCE;
+        }, () -> webView, msg -> {
+            toast(msg);
+            return kotlin.Unit.INSTANCE;
+        });
+        notif = new NotifBridge(bridgeCtx);
+        logs = new LogBridge(bridgeCtx);
+        prefs = new PrefsBridge(bridgeCtx);
+        device = new DeviceBridge(bridgeCtx);
+        net = new NetBridge(bridgeCtx);
+        ui = new UiBridge(bridgeCtx);
+        files = new FileBridge(bridgeCtx);
+        appInfo = new AppInfoBridge(bridgeCtx);
+        browser = new BrowserBridge(bridgeCtx);
+        saveImage = new SaveImageBridge(bridgeCtx);
         watchDownloads();
     }
 
@@ -100,7 +135,7 @@ public class JsBridge {
     }
 
     void setImageProxy(ImageProxy p) {
-        this.imageProxy = p;
+        net.setImageProxy(p);
     }
 
     private void runJs(final String js) {
@@ -143,30 +178,7 @@ public class JsBridge {
     /* ---------------- 网络 ---------------- */
     @JavascriptInterface
     public void http(String id, String method, String url, String body, String headersJson) {
-        pool.execute(() -> {
-            try {
-                Map<String, String> headers = new HashMap<>();
-                if (headersJson != null && !headersJson.isEmpty()) {
-                    JSONObject jo = new JSONObject(headersJson);
-                    Iterator<String> it = jo.keys();
-                    while (it.hasNext()) {
-                        String k = it.next();
-                        headers.put(k, jo.optString(k, ""));
-                    }
-                }
-                Http.Response r = Http.request(method, url, body, headers);
-                String js = "window.Native._cb(" + JSONObject.quote(String.valueOf(id)) + ","
-                        + r.code + "," + JSONObject.quote(r.body == null ? "" : r.body) + ","
-                        + JSONObject.quote(r.headers == null ? "{}" : r.headers) + ")";
-                runJs(js);
-            } catch (Throwable t) {
-                String msg = t.getMessage();
-                if (msg == null) msg = t.getClass().getSimpleName();
-                String js = "window.Native._cb(" + JSONObject.quote(String.valueOf(id)) + ",0,"
-                        + JSONObject.quote("") + "," + JSONObject.quote("{\"error\":" + JSONObject.quote(msg) + "}") + ")";
-                runJs(js);
-            }
-        });
+        net.http(id, method, url, body, headersJson);
     }
 
     /**
@@ -179,26 +191,7 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void httpB64(String id, String url, String headersJson) {
-        pool.execute(() -> {
-            try {
-                Map<String, String> headers = new HashMap<>();
-                if (headersJson != null && !headersJson.isEmpty()) {
-                    JSONObject jo = new JSONObject(headersJson);
-                    Iterator<String> it = jo.keys();
-                    while (it.hasNext()) {
-                        String k = it.next();
-                        String v = jo.optString(k, "");
-                        if (!v.isEmpty()) headers.put(k, v);
-                    }
-                }
-                Http.Response r = Http.requestB64("GET", url, null, headers);
-                emitB64(id, r.code, r.body, r.headers == null ? "{}" : r.headers);
-            } catch (Throwable t) {
-                String msg = t.getMessage();
-                if (msg == null) msg = t.getClass().getSimpleName();
-                emitB64(id, 0, "", "{\"error\":" + JSONObject.quote(msg) + "}");
-            }
-        });
+        net.httpB64(id, url, headersJson);
     }
 
     /**
@@ -212,7 +205,7 @@ public class JsBridge {
      */
     @JavascriptInterface
     public boolean imageProxyReady() {
-        return imageProxy != null;
+        return net.imageProxyReady();
     }
 
     /**
@@ -223,63 +216,13 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void prefetchImages(String urlsJson) {
-        final ImageProxy p = imageProxy;
-        if (p == null || urlsJson == null || urlsJson.isEmpty()) return;
-        try {
-            org.json.JSONArray arr = new org.json.JSONArray(urlsJson);
-            int n = Math.min(arr.length(), 12);
-            List<String> urls = new ArrayList<>(n);
-            for (int i = 0; i < n; i++) {
-                String u = arr.optString(i, "");
-                if (!u.isEmpty()) urls.add(u);
-            }
-            if (urls.isEmpty()) return;
-            pool.execute(() -> p.prefetch(urls));
-        } catch (Throwable ignored) {
-            /* 预热失败不算失败：到时候会走常规路径，用户无感 */
-        }
+        net.prefetchImages(urlsJson);
     }
 
-    /* Base64 回传的单次上限（字符数）。
-     *
-     * evaluateJavascript 底层是 Binder IPC，单次事务上限约 1MB —— README 里
-     * 一张 417KB 的赞赏码图，base64 之后就是 556KB 字符，再叠上 4 条并发，
-     * 一次要塞 2MB 过 Binder，结果是一张都传不回来（表现就是「大图加载不出来，
-     * 小图没事」）。所以超过阈值的响应切成小片依次下发，前端拼好再交付。
-     *
-     * 48KB 是留足余量的取值：连電普通 API 响应（几十 KB）根本不会走到分片
-     * 这条路，只有真正的图片/大附件才会。 */
-    private static final int B64_CHUNK = 48 * 1024;
 
-    /**
-     * 下发 base64 响应：小的一次给完，大的先 _begin 登记、再逐片 _chunk。
-     * 全程走 runOnUiThread，同一线程的 post 是 FIFO，顺序不会乱。
-     */
-    private void emitB64(String id, int code, String body, String headers) {
-        String b = body == null ? "" : body;
-        String qid = JSONObject.quote(String.valueOf(id));
-        String qh = JSONObject.quote(headers == null ? "{}" : headers);
-        if (b.length() <= B64_CHUNK) {
-            runJs("window.Native._cb(" + qid + "," + code + "," + JSONObject.quote(b) + "," + qh + ")");
-            return;
-        }
-        int n = (b.length() + B64_CHUNK - 1) / B64_CHUNK;
-        runJs("window.Native._begin(" + qid + "," + code + "," + n + "," + qh + ")");
-        for (int i = 0; i < n; i++) {
-            int end = Math.min(b.length(), (i + 1) * B64_CHUNK);
-            runJs("window.Native._chunk(" + qid + "," + i + ","
-                    + JSONObject.quote(b.substring(i * B64_CHUNK, end)) + ")");
-        }
-    }
 
     /* ---------------- 文件选择与上传 ---------------- */
 
-    /** 当前挂起的文件选择回调 id（一次只允许一个）。 */
-    private String pendingPickId;
-    private String pendingUploadId;
-    private Uri pendingUploadUri;
-    private String pendingUploadUrl;
-    private String pendingUploadHeaders;
 
     /*
      * 打开选择器；结果通过 window.Native._pick(id, json) 回调。
@@ -305,298 +248,24 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void pickFile(String id, String accept) {
-        pendingPickId = id;
-        final String raw = (accept == null || accept.isEmpty()) ? "*/*" : accept.trim();
-        activity.runOnUiThread(() -> {
-            if (isMediaAccept(raw)) {
-                // 相册路径：先要权限，拿到（或拿不到）都继续开相册
-                if (!ensureMediaPermission(raw)) {
-                    pendingPickAccept = raw;   // 等权限回调，见 onMediaPermissionResult()
-                    return;
-                }
-                launchGallery(raw);
-            } else {
-                launchFileBrowser(raw);
-            }
-        });
-    }
-
-    /** 权限回调未回来前暂存的 accept 参数。 */
-    private String pendingPickAccept;
-
-    /** 这个 accept 是不是「只要图片 / 视频」—— 是的话走相册，不走文件浏览器。 */
-    private static boolean isMediaAccept(String accept) {
-        if (accept == null) return false;
-        String a = accept.trim();
-        if (a.isEmpty() || "*/*".equals(a)) return false;   // 任意文件 -> 文件浏览器
-        String[] types = splitTypes(a);
-        for (String t : types) {
-            // 只要出现非图片非视频的类型，就说明要的是「文件」，不能只给相册
-            if (!t.startsWith("image/") && !t.startsWith("video/")) return false;
-        }
-        return types.length > 0;
-    }
-
-    /**
-     * 打开系统相册（图片 / 视频）。
-     *
-     * 三级降级，按系统版本挑最新的可用方式：
-     *   1. Android 13+：ACTION_PICK_IMAGES —— 系统照片选择器，就是相册那个界面。
-     *      传 MediaStore.getPickImagesMaxLimit() 允许一次多选。
-     *   2. Android 7~12：MediaStore.ACTION_PICK_IMAGES 不存在，用
-     *      ACTION_PICK + MediaStore 的 images/video 集合 —— 同样是相册界面。
-     *      图片+视频同时要时用 Intent.ACTION_PICK 配 EXTRA_MIME_TYPES。
-     *   3. 都没有（极少见）：退回文件浏览器，至少能用。
-     *
-     * 拿到的是带读权限的 content:// URI，经 FilePick.query 读取元信息后
-     * 交给前端上传，和文件浏览器路径完全一致。
-     */
-    private void launchGallery(String accept) {
-        String[] types = splitTypes(accept);
-        boolean wantImage = false, wantVideo = false;
-        for (String t : types) {
-            if (t.startsWith("image/")) wantImage = true;
-            else if (t.startsWith("video/")) wantVideo = true;
-            else { wantImage = true; wantVideo = true; }
-        }
-
-        // 1) Android 13+ 的系统照片选择器（就是「相册」那个界面）
-        //
-        //    图片和视频【可以同时选】：官方文档写明，不限定 MIME 类型时
-        //    选择器会同时显示照片和视频；只有 setType("image/*") 才只给图片。
-        //    上一版这里搞错了 —— 「两者都要」时主动跳过系统相册、退到
-        //    ACTION_PICK + MediaStore.Files，而部分定制系统（如部分一加/OPPO）
-        //    把它渲染成文件浏览器，于是用户要「去文件夹里翻视频」。
-        //    现在两者都要时不设 type，让系统相册同时列出图片和视频。
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            try {
-                Intent i = new Intent("android.provider.action.PICK_IMAGES");
-                if (wantImage && !wantVideo) {
-                    i.setType("image/*");     // 只要图片
-                } else if (wantVideo && !wantImage) {
-                    i.setType("video/*");     // 只要视频
-                }
-                // 两者都要：不 setType —— 相册同时显示照片和视频
-                try { i.putExtra("android.provider.extra.PICK_IMAGES_MAX", 100); } catch (Exception ignored) {}
-                activity.startActivityForResult(i, FilePick.REQ_PICK);
-                return;
-            } catch (Exception ignored) {
-                // 落到下一级
-            }
-        }
-
-        // 2) Android 7~12：ACTION_PICK + MediaStore（也是相册界面）
-        try {
-            Intent i = new Intent(Intent.ACTION_PICK);
-            if (wantImage && !wantVideo) {
-                i.setDataAndType(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, "image/*");
-            } else if (wantVideo && !wantImage) {
-                i.setDataAndType(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, "video/*");
-            } else {
-                // 图片 + 视频：让用户在相册里挑，EXTRA_MIME_TYPES 声明两种类型
-                i.setDataAndType(MediaStore.Files.getContentUri("external"), "*/*");
-                i.putExtra(Intent.EXTRA_MIME_TYPES, new String[]{"image/*", "video/*"});
-            }
-            try { i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true); } catch (Exception ignored) {}
-            try {
-                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            } catch (Exception ignored) {}
-            activity.startActivityForResult(i, FilePick.REQ_PICK);
-            return;
-        } catch (Exception ignored) {
-            // 落到下一级
-        }
-
-        // 3) 兜底：文件浏览器
-        launchFileBrowser(accept);
-    }
-
-    /** 非媒体文件（APK / 压缩包 / 任意文件）走系统文件浏览器。 */
-    private void launchFileBrowser(String accept) {
-        try {
-            String[] types = splitTypes(accept);
-            Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            i.addCategory(Intent.CATEGORY_OPENABLE);
-            if (types.length == 1) {
-                i.setType(types[0]);
-            } else {
-                i.setType("*/*");   // 通配 + EXTRA_MIME_TYPES：setType 只认一个类型串
-                i.putExtra(Intent.EXTRA_MIME_TYPES, types);
-            }
-            try { i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true); } catch (Exception ignored) {}
-            try {
-                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
-            } catch (Exception ignored) {}
-            activity.startActivityForResult(i, FilePick.REQ_PICK);
-        } catch (Exception e) {
-            // 个别精简系统没有 DocumentsUI：退回老方式，至少给个选择器
-            try {
-                Intent i = new Intent(Intent.ACTION_GET_CONTENT);
-                i.addCategory(Intent.CATEGORY_OPENABLE);
-                String[] types = splitTypes(accept);
-                if (types.length == 1) i.setType(types[0]);
-                else { i.setType("*/*"); i.putExtra(Intent.EXTRA_MIME_TYPES, types); }
-                activity.startActivityForResult(Intent.createChooser(i, "选择文件"), FilePick.REQ_PICK);
-            } catch (Exception e2) {
-                failPick(pendingPickId, "无法打开文件选择器");
-            }
-        }
-    }
-
-    /**
-     * 按 accept 判断需要哪种媒体权限；不需要或已经有了就返回 true。
-     * 需要但还没有：发起运行时申请并返回 false。
-     */
-    private boolean ensureMediaPermission(String accept) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return true;
-        List<String> need = new ArrayList<>();
-        boolean wantsImage = accept.contains("image") || accept.equals("*/*");
-        boolean wantsVideo = accept.contains("video") || accept.equals("*/*");
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            // Android 13+：分区媒体权限，只能按类型申请。
-            // 申请前先看「已授予」——
-            //   Android 14 上 READ_MEDIA_IMAGES 未授予，但
-            //   READ_MEDIA_VISUAL_USER_SELECTED 已授予（用户选了「仅选中的照片」）时，
-            //   相册是有内容的，不该再弹一次权限框骚扰用户。
-            boolean imgOk = activity.checkSelfPermission(android.Manifest.permission.READ_MEDIA_IMAGES)
-                    == android.content.pm.PackageManager.PERMISSION_GRANTED;
-            boolean vidOk = activity.checkSelfPermission(android.Manifest.permission.READ_MEDIA_VIDEO)
-                    == android.content.pm.PackageManager.PERMISSION_GRANTED;
-            boolean partialOk = false;
-            if (Build.VERSION.SDK_INT >= 34) {
-                try {
-                    partialOk = activity.checkSelfPermission(
-                            android.Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
-                            == android.content.pm.PackageManager.PERMISSION_GRANTED;
-                } catch (Throwable ignored) { }
-            }
-            if (wantsImage && !imgOk && !partialOk) need.add(android.Manifest.permission.READ_MEDIA_IMAGES);
-            if (wantsVideo && !vidOk && !partialOk) need.add(android.Manifest.permission.READ_MEDIA_VIDEO);
-            if (need.isEmpty()) return true;
-            // 已拿到「部分照片」权限时不再申请，直接开相册
-            if (partialOk && (wantsImage || wantsVideo)) return true;
-        } else {
-            if ((wantsImage || wantsVideo)
-                    && activity.checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)
-                    != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-                need.add(android.Manifest.permission.READ_EXTERNAL_STORAGE);
-            }
-        }
-        if (need.isEmpty()) return true;
-        try {
-            activity.requestPermissions(need.toArray(new String[0]), REQ_MEDIA_PERM);
-        } catch (Exception e) {
-            return true;   // 申请失败也别把选择器堵死
-        }
-        return false;
+        files.pickFile(id, accept);
     }
 
     /** 权限申请结果由 MainActivity 转发过来。无论如何都把选择器打开。 */
     void onMediaPermissionResult() {
-        String accept = pendingPickAccept;
-        pendingPickAccept = null;
-        if (pendingPickId == null) return;
-        launchGallery(accept == null || accept.isEmpty() ? "*/*" : accept);
+        files.onMediaPermissionResult();
     }
 
-    /* 把 accept 拆成 MIME 数组： "image/*,video/*" -> ["image/*","video/*"]；
-     * 空或通配按单元素处理。 */
-    private static String[] splitTypes(String accept) {
-        if (accept == null || accept.isEmpty() || "*/*".equals(accept.trim())) {
-            return new String[]{"*/*"};
-        }
-        String[] parts = accept.split(",");
-        List<String> out = new ArrayList<>();
-        for (String p : parts) {
-            String t = p.trim();
-            if (!t.isEmpty()) out.add(t);
-        }
-        if (out.isEmpty()) out.add("*/*");
-        return out.toArray(new String[0]);
-    }
 
-    private void failPick(String id, String msg) {
-        runJs("window.Native._pick(" + JSONObject.quote(String.valueOf(id)) + ",null,"
-                + JSONObject.quote(msg) + ")");
-    }
+
 
     /** MainActivity 在 onActivityResult 中转发结果。 */
     void onPickResult(int resultCode, Intent data) {
-        String id = pendingPickId;
-        pendingPickId = null;
-        if (id == null) return;
-        if (resultCode != Activity.RESULT_OK || data == null) {
-            runJs("window.Native._pick(" + JSONObject.quote(id) + ",null,\"\")");
-            return;
-        }
-
-        // 多选：ClipData 里是一个列表；单选仍在 data.getData()。
-        // 前端拿到数组后逐个上传。
-        java.util.List<Uri> uris = new ArrayList<>();
-        try {
-            if (data.getClipData() != null) {
-                ClipData cd = data.getClipData();
-                for (int i = 0; i < cd.getItemCount(); i++) {
-                    Uri u = cd.getItemAt(i).getUri();
-                    if (u != null) uris.add(u);
-                }
-            } else if (data.getData() != null) {
-                uris.add(data.getData());
-            }
-        } catch (Exception ignored) { }
-
-        if (uris.isEmpty()) {
-            // 用户什么都没选（点返回 / 关掉选择器）
-            runJs("window.Native._pick(" + JSONObject.quote(id) + ",null,\"\")");
-            return;
-        }
-
-        try {
-            JSONArray arr = new JSONArray();
-            for (Uri uri : uris) {
-                /*
-                  持久化读权限 —— 但**只能对支持持久化的来源调**。
-
-                  系统文件浏览器（ACTION_OPEN_DOCUMENT）返回的 URI 支持持久化；
-                  而系统相册（ACTION_PICK / Android 13+ 的照片选择器）返回的
-                  **明确不支持** —— 对它调 takePersistableUriPermission 必抛
-                  SecurityException。
-
-                  以前这行裸奔在循环里，相册选完一张图，这里一抛就把整个
-                  try 块带崩，用户看到的是「读取文件信息失败」—— 上传功能
-                  在相册路径上全军覆没。现在逐条尝试、失败只影响它自己：
-                  相册 URI 拿的是系统授予的临时读权限，紧接着的上传在
-                  本进程内读，完全够用。
-                */
-                try {
-                    int flags = data.getFlags() & Intent.FLAG_GRANT_READ_URI_PERMISSION;
-                    activity.getContentResolver().takePersistableUriPermission(uri, flags);
-                } catch (Exception ignored) {
-                    // 不支持持久化（相册等来源）—— 临时权限足够本次上传
-                }
-                FilePick.Meta meta = FilePick.query(activity, uri);
-                JSONObject jo = new JSONObject();
-                jo.put("name", meta.name);
-                jo.put("size", meta.size);
-                jo.put("mime", meta.mime);
-                jo.put("uri", uri.toString());
-                arr.put(jo);
-            }
-            // 单个也包成数组，前端统一按数组处理（_pick 里再摊平回单对象）
-            runJs("window.Native._pick(" + JSONObject.quote(id) + ","
-                    + arr.toString() + ",\"\")");
-        } catch (Exception e) {
-            failPick(id, "读取文件信息失败");
-        }
+        files.onPickResult(resultCode, data);
     }
 
     void onPickCancel() {
-        String id = pendingPickId;
-        pendingPickId = null;
-        if (id != null) {
-            runJs("window.Native._pick(" + JSONObject.quote(id) + ",null,\"\")");
-        }
+        files.onPickCancel();
     }
 
     /**
@@ -609,53 +278,12 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void pickFolder(String id) {
-        pendingPickId = id;
-        activity.runOnUiThread(() -> {
-            try {
-                Intent i = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
-                i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
-                        | Intent.FLAG_GRANT_PREFIX_URI_PERMISSION);
-                activity.startActivityForResult(i, FilePick.REQ_PICK_FOLDER);
-            } catch (Exception e) {
-                failPick(pendingPickId, "无法打开文件夹选择器");
-            }
-        });
+        files.pickFolder(id);
     }
 
     /** MainActivity 在 onActivityResult 中转发文件夹选择结果。 */
     void onPickFolderResult(Intent data) {
-        String id = pendingPickId;
-        pendingPickId = null;
-        if (id == null) return;
-        try {
-            Uri tree = (data == null) ? null : data.getData();
-            if (tree == null) {
-                runJs("window.Native._pick(" + JSONObject.quote(id) + ",null,\"\")");
-                return;
-            }
-            /* tree URI 支持持久化授权 —— take 成功后，之后 listFolder /
-               逐个上传时（哪怕跨过一次 Activity 重建）读取权限都还在。
-               相册 URI 才是 take 不了的（那边已单独兜住）。 */
-            try {
-                activity.getContentResolver().takePersistableUriPermission(tree,
-                        Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            } catch (Exception ignored) { }
-
-            // 目录名：treeDocId 形如 "primary:Download/githup"，取最后一段
-            String docId = android.provider.DocumentsContract.getTreeDocumentId(tree);
-            String name = docId.substring(docId.lastIndexOf('/') + 1);
-            if (name.isEmpty()) name = "folder";
-
-            JSONObject jo = new JSONObject();
-            jo.put("folder", true);
-            jo.put("name", name);
-            jo.put("uri", tree.toString());
-            runJs("window.Native._pick(" + JSONObject.quote(id) + ","
-                    + jo.toString() + ",\"\")");
-        } catch (Exception e) {
-            failPick(id, "读取文件夹信息失败");
-        }
+        files.onPickFolderResult(data);
     }
 
     /**
@@ -667,76 +295,14 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void listFolder(String id, String treeUriStr) {
-        pool.execute(() -> {
-            try {
-                Uri tree = Uri.parse(treeUriStr);
-                java.util.List<FilePick.TreeItem> items =
-                        FilePick.listTree(activity, tree, FilePick.MAX_TREE_FILES);
-                JSONArray arr = new JSONArray();
-                for (FilePick.TreeItem it : items) {
-                    JSONObject jo = new JSONObject();
-                    jo.put("name", it.name);
-                    jo.put("path", it.path);
-                    jo.put("size", it.size);
-                    jo.put("mime", it.mime);
-                    jo.put("uri", it.uri);
-                    arr.put(jo);
-                }
-                runJs("window.Native._list(" + JSONObject.quote(String.valueOf(id)) + ","
-                        + arr.toString() + ",\"\")");
-            } catch (Throwable t) {
-                String msg = t.getMessage();
-                if (msg == null) msg = t.getClass().getSimpleName();
-                runJs("window.Native._list(" + JSONObject.quote(String.valueOf(id))
-                        + ",null," + JSONObject.quote(msg) + ")");
-            }
-        });
+        files.listFolder(id, treeUriStr);
     }
-
-    /**
-     * 读取选中文件的 Base64（用于小文件内嵌场景：TOTP 恢复码导入、
-     * 二维码识别等）。
-     *
-     * ⚠️ 硬上限 READ_B64_MAX —— 这不是「建议」，是保命线。
-     *
-     * Base64 结果会拼进一行 JS 用 evaluateJavascript 灌给 WebView：
-     * 一个 25MB 的文件就是 33MB 的字符串，中转链路（quote 转义副本、
-     * 跨进程传给渲染进程、V8 解析）每一步都在堆内存的悬崖上 ——
-     * 中低端机「一上传就闪退」的真身就是它。
-     *
-     * 大文件（仓库文件上传）绝不能再走这条路，一律用
-     * {@link #uploadMultipartB64}：文件在原生侧边读边编、直接进网络，
-     * 内存占用恒定几 KB。
-     */
-    private static final long READ_B64_MAX = 12L * 1024 * 1024;
 
     @JavascriptInterface
     public void readFileBase64(String id, String uriStr, long maxBytes) {
-        pool.execute(() -> {
-            try {
-                Uri uri = Uri.parse(uriStr);
-                /* 双上限：调用方给的小上限优先，但本方法自己的保命线
-                   永远生效 —— 谁也拦不住前端哪天传个 100 进来 */
-                long cap = (maxBytes > 0 && maxBytes < READ_B64_MAX) ? maxBytes : READ_B64_MAX;
-                FilePick.Meta meta = FilePick.query(activity, uri);
-                if (meta.size > cap) {
-                    runJs("window.Native._read(" + JSONObject.quote(String.valueOf(id))
-                            + ",null," + JSONObject.quote("文件过大（" + FilePick.human(meta.size)
-                            + "），超过 " + FilePick.human(cap) + " 限制") + ")");
-                    return;
-                }
-                byte[] bytes = FilePick.readAll(activity, uri, cap);
-                String b64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP);
-                runJs("window.Native._read(" + JSONObject.quote(String.valueOf(id)) + ","
-                        + JSONObject.quote(b64) + ",\"\")");
-            } catch (Throwable t) {
-                String msg = t.getMessage();
-                if (msg == null) msg = t.getClass().getSimpleName();
-                runJs("window.Native._read(" + JSONObject.quote(String.valueOf(id)) + ",null,"
-                        + JSONObject.quote(msg) + ")");
-            }
-        });
+        files.readFileBase64(id, uriStr, maxBytes);
     }
+
 
     /**
      * 二进制上传到指定 URL（用于 Release 附件）。
@@ -754,42 +320,7 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void uploadBinary(String id, String url, String uriStr, String headersJson) {
-        pool.execute(() -> {
-            InputStream in = null;
-            try {
-                Map<String, String> headers = new HashMap<>();
-                if (headersJson != null && !headersJson.isEmpty()) {
-                    JSONObject jo = new JSONObject(headersJson);
-                    Iterator<String> it = jo.keys();
-                    while (it.hasNext()) {
-                        String k = it.next();
-                        headers.put(k, jo.optString(k, ""));
-                    }
-                }
-                Uri uri = Uri.parse(uriStr);
-                String ctype = headers.remove("Content-Type");
-                if (ctype == null || ctype.isEmpty()) ctype = "application/octet-stream";
-
-                long size = FilePick.sizeOf(activity, uri);
-                if (size > FilePick.MAX_ASSET_BYTES) {
-                    throw new Exception("文件过大（" + FilePick.human(size)
-                            + "），附件不能超过 " + FilePick.human(FilePick.MAX_ASSET_BYTES));
-                }
-
-                in = FilePick.open(activity, uri);
-                Http.Response r = Http.requestMultipart(url, in, size, ctype, headers);
-                runJs("window.Native._cb(" + JSONObject.quote(String.valueOf(id)) + ","
-                        + r.code + "," + JSONObject.quote(r.body == null ? "" : r.body) + ","
-                        + JSONObject.quote(r.headers == null ? "{}" : r.headers) + ")");
-            } catch (Throwable t) {
-                String msg = t.getMessage();
-                if (msg == null) msg = t.getClass().getSimpleName();
-                runJs("window.Native._cb(" + JSONObject.quote(String.valueOf(id)) + ",0,"
-                        + JSONObject.quote("") + "," + JSONObject.quote("{\"error\":" + JSONObject.quote(msg) + "}") + ")");
-            } finally {
-                try { if (in != null) in.close(); } catch (Throwable ignored) { }
-            }
-        });
+        files.uploadBinary(id, url, uriStr, headersJson);
     }
 
     /**
@@ -806,48 +337,7 @@ public class JsBridge {
     @JavascriptInterface
     public void uploadMultipart(String id, String url, String uriStr, String headersJson,
                                 String head, String tail) {
-        pool.execute(() -> {
-            InputStream in = null;
-            try {
-                Map<String, String> headers = new HashMap<>();
-                if (headersJson != null && !headersJson.isEmpty()) {
-                    JSONObject jo = new JSONObject(headersJson);
-                    Iterator<String> it = jo.keys();
-                    while (it.hasNext()) {
-                        String k = it.next();
-                        headers.put(k, jo.optString(k, ""));
-                    }
-                }
-
-                Uri uri = Uri.parse(uriStr);
-                String ctype = headers.remove("Content-Type");   // 由请求头单独带，别重复
-
-                byte[] headBytes = head == null ? new byte[0] : head.getBytes("UTF-8");
-                byte[] tailBytes = tail == null ? new byte[0] : tail.getBytes("UTF-8");
-                long fileLen = FilePick.sizeOf(activity, uri);
-                long total = headBytes.length + fileLen + tailBytes.length;
-
-                // 头 + 文件 + 尾拼成一个流，交给底层流式发送
-                in = new java.io.SequenceInputStream(
-                        new java.io.ByteArrayInputStream(headBytes),
-                        new java.io.SequenceInputStream(
-                                FilePick.open(activity, uri),
-                                new java.io.ByteArrayInputStream(tailBytes)));
-
-                Http.Response r = Http.requestMultipart(url, in, total, ctype, headers);
-                runJs("window.Native._cb(" + JSONObject.quote(String.valueOf(id)) + ","
-                        + r.code + "," + JSONObject.quote(r.body == null ? "" : r.body) + ","
-                        + JSONObject.quote(r.headers == null ? "{}" : r.headers) + ")");
-            } catch (Throwable t) {
-                String msg = t.getMessage();
-                if (msg == null) msg = t.getClass().getSimpleName();
-                runJs("window.Native._cb(" + JSONObject.quote(String.valueOf(id)) + ",0,"
-                        + JSONObject.quote("") + ","
-                        + JSONObject.quote("{\"error\":" + JSONObject.quote(msg) + "}") + ")");
-            } finally {
-                try { if (in != null) in.close(); } catch (Throwable ignored) { }
-            }
-        });
+        files.uploadMultipart(id, url, uriStr, headersJson, head, tail);
     }
 
     /**
@@ -872,54 +362,7 @@ public class JsBridge {
     @JavascriptInterface
     public void uploadMultipartB64(String id, String url, String uriStr, String headersJson,
                                    String head, String tail) {
-        pool.execute(() -> {
-            InputStream in = null;
-            try {
-                Map<String, String> headers = new HashMap<>();
-                if (headersJson != null && !headersJson.isEmpty()) {
-                    JSONObject jo = new JSONObject(headersJson);
-                    Iterator<String> it = jo.keys();
-                    while (it.hasNext()) {
-                        String k = it.next();
-                        headers.put(k, jo.optString(k, ""));
-                    }
-                }
-
-                Uri uri = Uri.parse(uriStr);
-                String ctype = headers.remove("Content-Type");
-                if (ctype == null || ctype.isEmpty()) ctype = "application/json";
-
-                byte[] headBytes = head == null ? new byte[0] : head.getBytes("UTF-8");
-                byte[] tailBytes = tail == null ? new byte[0] : tail.getBytes("UTF-8");
-                long fileLen = FilePick.sizeOf(activity, uri);
-                if (fileLen > FilePick.MAX_CONTENTS_BYTES) {
-                    throw new Exception("文件过大（" + FilePick.human(fileLen)
-                            + "），仓库文件不能超过 " + FilePick.human(FilePick.MAX_CONTENTS_BYTES));
-                }
-                long total = headBytes.length + FilePick.base64Length(fileLen) + tailBytes.length;
-
-                // 头 + 文件(边读边编 Base64) + 尾 拼成一个流，底层流式发送。
-                // Contents API 只认 PUT —— 别用默认的 POST 重载
-                in = new java.io.SequenceInputStream(
-                        new java.io.ByteArrayInputStream(headBytes),
-                        new java.io.SequenceInputStream(
-                                FilePick.base64Encoding(FilePick.open(activity, uri)),
-                                new java.io.ByteArrayInputStream(tailBytes)));
-
-                Http.Response r = Http.requestMultipart("PUT", url, in, total, ctype, headers);
-                runJs("window.Native._cb(" + JSONObject.quote(String.valueOf(id)) + ","
-                        + r.code + "," + JSONObject.quote(r.body == null ? "" : r.body) + ","
-                        + JSONObject.quote(r.headers == null ? "{}" : r.headers) + ")");
-            } catch (Throwable t) {
-                String msg = t.getMessage();
-                if (msg == null) msg = t.getClass().getSimpleName();
-                runJs("window.Native._cb(" + JSONObject.quote(String.valueOf(id)) + ",0,"
-                        + JSONObject.quote("") + ","
-                        + JSONObject.quote("{\"error\":" + JSONObject.quote(msg) + "}") + ")");
-            } finally {
-                try { if (in != null) in.close(); } catch (Throwable ignored) { }
-            }
-        });
+        files.uploadMultipartB64(id, url, uriStr, headersJson, head, tail);
     }
 
     /**
@@ -936,39 +379,7 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void uploadRaw(String id, String url, String uriStr, String headersJson) {
-        pool.execute(() -> {
-            InputStream in = null;
-            try {
-                Map<String, String> headers = new HashMap<>();
-                if (headersJson != null && !headersJson.isEmpty()) {
-                    JSONObject jo = new JSONObject(headersJson);
-                    Iterator<String> it = jo.keys();
-                    while (it.hasNext()) {
-                        String k = it.next();
-                        headers.put(k, jo.optString(k, ""));
-                    }
-                }
-
-                Uri uri = Uri.parse(uriStr);
-                String ctype = headers.remove("Content-Type");
-                if (ctype == null || ctype.isEmpty()) ctype = "application/octet-stream";
-                long total = FilePick.sizeOf(activity, uri);
-                in = FilePick.open(activity, uri);
-
-                Http.Response r = Http.requestMultipart(url, in, total, ctype, headers);
-                runJs("window.Native._cb(" + JSONObject.quote(String.valueOf(id)) + ","
-                        + r.code + "," + JSONObject.quote(r.body == null ? "" : r.body) + ","
-                        + JSONObject.quote(r.headers == null ? "{}" : r.headers) + ")");
-            } catch (Throwable t) {
-                String msg = t.getMessage();
-                if (msg == null) msg = t.getClass().getSimpleName();
-                runJs("window.Native._cb(" + JSONObject.quote(String.valueOf(id)) + ",0,"
-                        + JSONObject.quote("") + ","
-                        + JSONObject.quote("{\"error\":" + JSONObject.quote(msg) + "}") + ")");
-            } finally {
-                try { if (in != null) in.close(); } catch (Throwable ignored) { }
-            }
-        });
+        files.uploadRaw(id, url, uriStr, headersJson);
     }
 
     /**
@@ -981,29 +392,13 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void makeKeystore(String id, String seed, String alias, String storePass, String keyPass) {
-        pool.execute(() -> {
-            try {
-                byte[] ks = KeyTool.makeKeystore(seed, alias, storePass, keyPass);
-                String b64 = android.util.Base64.encodeToString(ks, android.util.Base64.NO_WRAP);
-                runJs("window.Native._ks(" + JSONObject.quote(String.valueOf(id)) + ","
-                        + JSONObject.quote(b64) + ",\"\")");
-            } catch (Throwable t) {
-                String msg = t.getMessage();
-                if (msg == null) msg = t.getClass().getSimpleName();
-                runJs("window.Native._ks(" + JSONObject.quote(String.valueOf(id)) + ",null,"
-                        + JSONObject.quote(msg) + ")");
-            }
-        });
+        files.makeKeystore(id, seed, alias, storePass, keyPass);
     }
 
     /** 应用版本号，供「设置 → 关于」显示。 */
     @JavascriptInterface
     public String appVersion() {
-        try {
-            return BuildConfig.VERSION_NAME;
-        } catch (Throwable t) {
-            return "";
-        }
+        return appInfo.appVersion();
     }
 
     /**
@@ -1014,12 +409,7 @@ public class JsBridge {
      */
     @JavascriptInterface
     public String certSha256() {
-        try {
-            String s = SignCheck.signingSha256(activity);
-            return s == null ? "" : s;
-        } catch (Throwable t) {
-            return "";
-        }
+        return appInfo.certSha256();
     }
 
     /**
@@ -1031,24 +421,7 @@ public class JsBridge {
      */
     @JavascriptInterface
     public String apkSha256() {
-        try {
-            android.content.pm.ApplicationInfo ai =
-                activity.getPackageManager().getApplicationInfo(activity.getPackageName(), 0);
-            java.io.File apk = new java.io.File(ai.sourceDir);
-            if (!apk.exists()) return "";
-            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] buf = new byte[64 * 1024];
-            try (java.io.FileInputStream in = new java.io.FileInputStream(apk)) {
-                int n;
-                while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
-            }
-            byte[] digest = md.digest();
-            StringBuilder sb = new StringBuilder(digest.length * 2);
-            for (byte b : digest) sb.append(String.format("%02x", b & 0xff));
-            return sb.toString();
-        } catch (Throwable t) {
-            return "";
-        }
+        return appInfo.apkSha256();
     }
 
     /* ---------------- 错误日志 ---------------- */
@@ -1063,12 +436,12 @@ public class JsBridge {
      */
     @JavascriptInterface
     public boolean notifWatchEnabled() {
-        try { return NotifWatchReceiver.isEnabled(activity); } catch (Throwable ignored) { return true; }
+        return notif.notifWatchEnabled();
     }
 
     @JavascriptInterface
     public void setNotifWatch(boolean on) {
-        try { NotifWatchReceiver.setEnabled(activity, on); } catch (Throwable ignored) { }
+        notif.setNotifWatch(on);
     }
 
     /**
@@ -1079,13 +452,13 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void checkNotificationsNow() {
-        try { NotifWatchReceiver.checkNow(activity); } catch (Throwable ignored) { }
+        notif.checkNotificationsNow();
     }
 
     /** 上次后台检查的时间戳（0 = 从没检查过），给设置页显示 */
     @JavascriptInterface
     public long notifWatchLastCheck() {
-        try { return NotifWatchReceiver.lastCheck(activity); } catch (Throwable ignored) { return 0; }
+        return notif.notifWatchLastCheck();
     }
 
     /**
@@ -1099,7 +472,7 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void logError(String what, String why) {
-        try { LogBook.error(activity, what, why); } catch (Throwable ignored) { }
+        logs.logError(what, why);
     }
 
     /**
@@ -1109,7 +482,7 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void logNote(String what) {
-        try { LogBook.note(activity, what); } catch (Throwable ignored) { }
+        logs.logNote(what);
     }
 
     /**
@@ -1118,18 +491,7 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void saveLog(final String cbId) {
-        try {
-            pool.execute(new Runnable() {
-                @Override public void run() {
-                    boolean ok = false;
-                    try { ok = LogBook.save(activity); } catch (Throwable ignored) { }
-                    if (cbId != null && !cbId.isEmpty()) {
-                        runJs("window.Native&&Native.onLogSaved&&Native.onLogSaved('"
-                                + cbId + "'," + ok + ")");
-                    }
-                }
-            });
-        } catch (Throwable t) { }
+        logs.saveLog(cbId);
     }
 
     /**
@@ -1138,31 +500,7 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void shareLog() {
-        try {
-            pool.execute(new Runnable() {
-                @Override public void run() {
-                    android.net.Uri share = null;
-                    try { share = LogBook.share(activity); } catch (Throwable ignored) { }
-                    if (share == null) return;   // 写不出副本：没有可分享的东西
-
-                    try {
-                        Intent send = new Intent(Intent.ACTION_SEND);
-                        send.setType("text/plain");
-                        send.putExtra(Intent.EXTRA_SUBJECT, "githup 错误日志");
-                        send.putExtra(Intent.EXTRA_STREAM, share);
-                        send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        final Intent chooser = Intent.createChooser(send, "分享错误日志");
-                        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                                | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                        activity.runOnUiThread(new Runnable() {
-                            @Override public void run() {
-                                try { activity.startActivity(chooser); } catch (Throwable ignored) { }
-                            }
-                        });
-                    } catch (Throwable ignored) { }
-                }
-            });
-        } catch (Throwable ignored) { }
+        logs.shareLog();
     }
 
     /**
@@ -1170,54 +508,35 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void exportLog() {
-        saveLog("");
-        shareLog();
+        logs.exportLog();
     }
 
     /* ---------------- 令牌 ---------------- */
     @JavascriptInterface
     public String getToken() {
-        // 埋点四：令牌是最高价值的东西，读之前先过一遍防护链。
-        // 非官方包直接拿不到令牌 —— 这是最后一道，也是最实在的一道。
-        String t = SecurePrefs.get(activity, TOKEN_KEY, "");
-        return t == null ? "" : t;
+        return prefs.getToken();
     }
 
     @JavascriptInterface
     public void setToken(String token) {
-        if (token == null || token.isEmpty()) {
-            SecurePrefs.remove(activity, TOKEN_KEY);
-            /* 退出登录：撤掉轮询，并清掉去重表 —— 换账号后 id 不该继承，
-             * 否则新账号的旧通知会被当成"已经提醒过了"而漏掉。 */
-            try {
-                NotifWatchReceiver.cancel(activity);
-                NotifWatchReceiver.resetSeen(activity);
-            } catch (Throwable ignored) { }
-        } else {
-            SecurePrefs.put(activity, TOKEN_KEY, token);
-            /* 登录成功：把通知轮询挂上（已挂过不会重复） */
-            try { NotifWatchReceiver.scheduleSoonAfterLogin(activity); } catch (Throwable ignored) { }
-        }
+        prefs.setToken(token);
     }
 
     /* ---------------- 键值存储 ---------------- */
     @JavascriptInterface
     public String getPref(String key) {
-        return activity.getSharedPreferences("hub_prefs", Context.MODE_PRIVATE).getString(key, null);
+        return prefs.getPref(key);
     }
 
     @JavascriptInterface
     public void setPref(String key, String value) {
-        activity.getSharedPreferences("hub_prefs", Context.MODE_PRIVATE).edit().putString(key, value).apply();
+        prefs.setPref(key, value);
     }
 
     /* ---------------- 系统能力 ---------------- */
     @JavascriptInterface
     public void copy(String text) {
-        activity.runOnUiThread(() -> {
-            ClipboardManager cm = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
-            if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("hub", text));
-        });
+        prefs.copy(text);
     }
 
     /**
@@ -1232,16 +551,7 @@ public class JsBridge {
      */
     @JavascriptInterface
     public String getClipboard() {
-        try {
-            ClipboardManager cm = (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
-            if (cm == null || !cm.hasPrimaryClip()) return "";
-            ClipData clip = cm.getPrimaryClip();
-            if (clip == null || clip.getItemCount() == 0) return "";
-            CharSequence text = clip.getItemAt(0).coerceToText(activity);
-            return text == null ? "" : text.toString();
-        } catch (Throwable t) {
-            return "";
-        }
+        return prefs.getClipboard();
     }
 
     /**
@@ -1254,38 +564,9 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void totpSync(String accountsJson) {
-        try {
-            /* 存之前先按「规整密钥 + issuer + name」去重。
-               历史数据里同一账户可能被存两份（改过名字、重复导入），
-               通知栏就会并排出现两行一模一样的码。 */
-            String cleaned = accountsJson == null ? "[]" : accountsJson;
-            try {
-                org.json.JSONArray arr = new org.json.JSONArray(accountsJson == null ? "[]" : accountsJson);
-                org.json.JSONArray out = new org.json.JSONArray();
-                java.util.HashSet<String> seen = new java.util.HashSet<String>();
-                for (int i = 0; i < arr.length(); i++) {
-                    org.json.JSONObject o = arr.optJSONObject(i);
-                    if (o == null) continue;
-                    String type = o.optString("type", "totp");
-                    String key = Totp.normalizeSecret(o.optString("secret", ""))
-                            + "|" + type
-                            + "|" + o.optInt("digits", 6)
-                            + "|" + o.optInt("period", 30)
-                            + "|" + o.optString("algo", "SHA1");
-                    if ("hotp".equals(type)) key += "|" + o.optInt("counter", 0);
-                    if (!seen.add(key)) continue; // 已存过同一账户，跳过
-                    out.put(o);
-                }
-                cleaned = out.toString();
-            } catch (Throwable inner) { /* 解析失败就原样存，不丢用户数据 */ }
-
-            activity.getSharedPreferences("hub_prefs", Context.MODE_PRIVATE).edit()
-                    .putString("totp_accounts_cache", cleaned)
-                    .apply();
-            // 顺手让通知服务按新清单重画一次（新增/删除账户后立刻生效）
-            TotpService.refresh(activity);
-        } catch (Throwable ignored) { }
+        device.totpSync(accountsJson);
     }
+
 
     /**
      * 开关「后台常驻动态码通知」。
@@ -1298,42 +579,19 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void totpSetBackground(boolean on) {
-        try {
-            if (on) requestNotificationPermission();
-            TotpService.setEnabled(activity, on);
-        } catch (Throwable ignored) { }
-    }
-
-    /** 申请通知权限（Android 13+）。已授权或系统版本低就什么都不做。 */
-    private void requestNotificationPermission() {
-        if (Build.VERSION.SDK_INT < 33) return;
-        try {
-            if (activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
-                    == PackageManager.PERMISSION_GRANTED) return;
-            activity.runOnUiThread(() -> {
-                try {
-                    activity.requestPermissions(
-                            new String[]{android.Manifest.permission.POST_NOTIFICATIONS},
-                            REQ_NOTIFY_PERM);
-                } catch (Throwable ignored) { }
-            });
-        } catch (Throwable ignored) { }
+        device.totpSetBackground(on);
     }
 
     /** 查询后台常驻通知当前是不是开着（前端渲染开关状态用） */
     @JavascriptInterface
     public boolean totpBackgroundEnabled() {
-        try {
-            return TotpService.isEnabled(activity);
-        } catch (Throwable t) {
-            return false;
-        }
+        return device.totpBackgroundEnabled();
     }
 
     /** 当前 App 是否在前台（通知只在后台出现，前台不打扰） */
     @JavascriptInterface
     public boolean isAppForeground() {
-        return App.sForeground;
+        return device.isAppForeground();
     }
 
     /**
@@ -1350,37 +608,12 @@ public class JsBridge {
      */
     @JavascriptInterface
     public void requestCamera(String id) {
-        boolean granted = false;
-        try {
-            granted = activity.checkSelfPermission(android.Manifest.permission.CAMERA)
-                    == PackageManager.PERMISSION_GRANTED;
-        } catch (Throwable ignored) { }
-        if (granted) {
-            cameraResult(id, true);
-            return;
-        }
-        pendingCameraId = id;
-        activity.runOnUiThread(() -> {
-            try {
-                activity.requestPermissions(
-                        new String[]{android.Manifest.permission.CAMERA},
-                        REQ_CAMERA_PERM);
-            } catch (Throwable t) {
-                onCameraPermissionResult(false);
-            }
-        });
+        device.requestCamera(id);
     }
 
     /** MainActivity 在 onRequestPermissionsResult 里转发相机权限结果。 */
     void onCameraPermissionResult(boolean ok) {
-        String id = pendingCameraId;
-        pendingCameraId = null;
-        if (id != null) cameraResult(id, ok);
-    }
-
-    private void cameraResult(String id, boolean ok) {
-        runJs("window.Native._camera(" + JSONObject.quote(String.valueOf(id)) + ","
-                + (ok ? "true" : "false") + ")");
+        device.onCameraPermissionResult(ok);
     }
 
     /**
@@ -1392,16 +625,7 @@ public class JsBridge {
      */
     @JavascriptInterface
     public String randomHex(int bytes) {
-        try {
-            int n = Math.max(1, Math.min(bytes, 256));
-            byte[] buf = new byte[n];
-            new java.security.SecureRandom().nextBytes(buf);
-            StringBuilder sb = new StringBuilder(n * 2);
-            for (byte b : buf) sb.append(String.format(java.util.Locale.US, "%02x", b & 0xff));
-            return sb.toString();
-        } catch (Throwable t) {
-            return "";
-        }
+        return device.randomHex(bytes);
     }
 
     /**
@@ -1415,55 +639,17 @@ public class JsBridge {
      */
     @JavascriptInterface
     public String hmacSha1(String keyHex, String msgHex) {
-        return hmac("HmacSHA1", keyHex, msgHex);
+        return device.hmacSha1(keyHex, msgHex);
     }
 
     @JavascriptInterface
     public String hmacSha256(String keyHex, String msgHex) {
-        return hmac("HmacSHA256", keyHex, msgHex);
-    }
-
-    private String hmac(String algo, String keyHex, String msgHex) {
-        try {
-            byte[] key = hexToBytes(keyHex);
-            byte[] msg = hexToBytes(msgHex);
-            if (key == null || msg == null) return "";
-            javax.crypto.Mac mac = javax.crypto.Mac.getInstance(algo);
-            mac.init(new javax.crypto.spec.SecretKeySpec(key, algo));
-            byte[] out = mac.doFinal(msg);
-            StringBuilder sb = new StringBuilder(out.length * 2);
-            for (byte b : out) sb.append(String.format(java.util.Locale.US, "%02x", b & 0xff));
-            return sb.toString();
-        } catch (Throwable t) {
-            return "";
-        }
-    }
-
-    private static byte[] hexToBytes(String hex) {
-        if (hex == null || hex.isEmpty() || hex.length() % 2 != 0) return null;
-        byte[] out = new byte[hex.length() / 2];
-        for (int i = 0; i < out.length; i++) {
-            int hi = Character.digit(hex.charAt(i * 2), 16);
-            int lo = Character.digit(hex.charAt(i * 2 + 1), 16);
-            if (hi < 0 || lo < 0) return null;
-            out[i] = (byte) ((hi << 4) | lo);
-        }
-        return out;
+        return device.hmacSha256(keyHex, msgHex);
     }
 
     @JavascriptInterface
     public void share(String url, String title) {
-        activity.runOnUiThread(() -> {
-            try {
-                Intent i = new Intent(Intent.ACTION_SEND);
-                i.setType("text/plain");
-                i.putExtra(Intent.EXTRA_TEXT, url);
-                i.putExtra(Intent.EXTRA_SUBJECT, title == null ? "" : title);
-                activity.startActivity(Intent.createChooser(i, "分享"));
-            } catch (Exception e) {
-                Toast.makeText(activity, "无法分享", Toast.LENGTH_SHORT).show();
-            }
-        });
+        device.share(url, title);
     }
 
     @SuppressWarnings("deprecation")
@@ -1472,17 +658,7 @@ public class JsBridge {
     /** 在应用内置浏览器中打开链接（共享 Cookie，可复用网页登录态）。 */
     @JavascriptInterface
     public void openInApp(String url, String title) {
-        if (url == null || url.isEmpty()) return;
-        activity.runOnUiThread(() -> {
-            try {
-                Intent i = new Intent(activity, WebViewActivity.class);
-                i.putExtra(WebViewActivity.EXTRA_URL, url);
-                i.putExtra(WebViewActivity.EXTRA_TITLE, title);
-                activity.startActivity(i);
-            } catch (Exception e) {
-                Toast.makeText(activity, "无法打开页面", Toast.LENGTH_SHORT).show();
-            }
-        });
+        browser.openInApp(url, title);
     }
 
     @JavascriptInterface
@@ -1501,471 +677,29 @@ public class JsBridge {
      * 退化成用浏览器打开原链接，绝不留下「点了没反应」。
      */
     public void openExternal(String url) {
-        activity.runOnUiThread(() -> {
-            if (url == null || url.trim().isEmpty()) {
-                Toast.makeText(activity, "链接为空", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            try {
-                Intent i = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                if (isWebUrl(url)) i.addCategory(Intent.CATEGORY_BROWSABLE);
-                activity.startActivity(i);
-            } catch (Exception e) {
-                // 没人接这条 scheme（多半是对应 App 没装）：退回浏览器打开
-                try {
-                    if (!isWebUrl(url)) {
-                        Intent web = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-                        web.addCategory(Intent.CATEGORY_BROWSABLE);
-                        activity.startActivity(web);
-                        return;
-                    }
-                } catch (Exception ignored) {}
-                Toast.makeText(activity, "无法打开链接", Toast.LENGTH_SHORT).show();
-            }
-        });
+        browser.openExternal(url);
     }
 
-    /** 是不是 http/https 链接（只有这类才该带 CATEGORY_BROWSABLE） */
-    private static boolean isWebUrl(String url) {
-        try {
-            String s = Uri.parse(url).getScheme();
-            return s != null && (s.equalsIgnoreCase("http") || s.equalsIgnoreCase("https"));
-        } catch (Exception e) {
-            return false;
-        }
-    }
+
 
     @JavascriptInterface
     public void download(String url, String filename) {
         downloadWithHeaders(url, filename, null);
     }
 
-    /* ============================================================
-     * 保存图片到系统相册
+    /*
+     * 保存图片到系统相册（SaveImageBridge）。
      *
      * 跟 download() 的区别：
      *   - download 走 DownloadManager，落到 Download/githup/，是「文件」
      *   - saveImage 走 MediaStore.Images，落到 Pictures/githup/，是「照片」，
      *     系统相册、微信、QQ 选图时都能直接看到
-     *
-     * 触发场景：议题正文里的截图、赞赏码、查看大图时点「保存」。
-     * 长按弹菜单由前端负责，这里只做「拿到 URL → 落盘到相册」。
-     * ============================================================ */
+     */
     @JavascriptInterface
     public void saveImage(final String url) {
-        if (url == null || url.isEmpty()) {
-            toast("图片地址为空");
-            return;
-        }
-        pool.execute(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    Http.RawResponse resp = null;
-                    /* 1) 拿到图片字节。
-                     *    分两种来源：
-                     *      a) 本地 assets 资源（赞赏码 tips.png 这类）—— 直接读 assets
-                     *      b) 网络图片（GitHub 附件、仓库图）—— 走 Http，带 token */
-                    byte[] data;
-                    /*
-                      ═══ data: URI —— 字节就在串里，不必再发网络 ═══
-
-                      README 里的图片为了让 raw.githubusercontent.com 这类
-                      直连不通的地址也能出图，走了一条「原生取图」快车道：
-                      拉回 base64 塞成 data: URI 再赋给 <img src>（见
-                      md.js 的 pumpFetch，以及 ImageProxy 的转发通道）。
-                      **于是 img.src 可能整串都是图片数据，而不是一个网址。**
-
-                      浏览器当然能渲染它 —— 也正是它能「下载图片」的原因之一
-                      （浏览器存的是已解码的那份，根本不用再按 URL 取一遍）。
-                      而这里以前没有这个分支：data: 掉进下面的网络分支，
-                      `new URL("data:…")` 直接抛 MalformedURLException，
-                      报错写着「保存失败：no protocol: data:…」，看不懂。
-
-                      没有这个分支，README 里凡是走了快车道的图都存不下来 ——
-                      而那恰恰是绝大多数。
-                    */
-                    boolean isData = url != null && url.startsWith("data:");
-                    String assetPath = null;
-                    if (isData) {
-                        data = decodeDataUri(url);
-                        if (data == null || data.length == 0) {
-                            toast("保存失败：图片数据读不出来");
-                            return;
-                        }
-                    } else {
-                    assetPath = assetPathOf(url);
-                    if (assetPath != null) {
-                        /* 本地 assets：file:///android_asset/web/img/tips.png
-                         * 或相对路径 img/tips.png，都映射到 assets/web/... */
-                        java.io.InputStream in = null;
-                        try {
-                            in = activity.getAssets().open(assetPath);
-                            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-                            byte[] buf = new byte[16384];
-                            int n;
-                            while ((n = in.read(buf)) > 0) baos.write(buf, 0, n);
-                            data = baos.toByteArray();
-                        } finally {
-                            if (in != null) try { in.close(); } catch (Throwable ignored) {}
-                        }
-                    } else {
-                        /*
-                          ═══ 建连前先验一下地址 ═══
-
-                          报错长这样：
-                              failed to connect to localhost/127.0.0.1 (port 443)
-
-                          443 这个数字是关键：Http 里端口是这么算的
-                              secure = "https".equalsIgnoreCase(u.getProtocol())
-                              port   = u.getPort()>0 ? u.getPort() : (secure?443:80)
-                          能算出 443 说明 **protocol 是 https，而 host 是空的**
-                          (空 host 经 InetAddress.getByName("") 解析成回环地址，
-                          于是报错里写着 localhost/127.0.0.1)。
-
-                          浏览器遇到这种地址是**认得出无效、直接失败**的，
-                          绝不会去连本机；我们以前照建连不误。这里挡一道，
-                          和浏览器对齐：解析不出主机就不连，并给一句人话。
-                        */
-                        /*
-                          用 Http.hostUsable 而不是自己判「host 非空」——
-                          后者会放行 localhost / 127.0.0.1 / 0.0.0.0 / [::1]，
-                          照样连到本机，报错依旧是那句 localhost。
-                        */
-                        if (!Http.hostUsable(url)) {
-                            toast("保存失败：图片地址不完整（" + briefUrl(url) + "）");
-                            return;
-                        }
-                        java.util.Map<String, String> headers = new java.util.HashMap<>();
-                        String token = getToken();
-                        if (token != null && !token.isEmpty()) {
-                            headers.put("Authorization", "Bearer " + token);
-                        }
-                        headers.put("Accept", "image/*,*/*;q=0.8");
-                        /*
-                          ═══ 直连取不到，就换加速通道 ═══
-
-                          日志已经给出真相（用户导出）：地址完全正常 ——
-                              https://raw.githubusercontent.com/Buwrt/githup/main/docs/tips.png
-                          却连到了 localhost/127.0.0.1。
-
-                          那串不是我们写死的地址，而是**解析结果**：
-                          InetAddress.toString() 是「主机名/IP」，127.0.0.1 的
-                          反查名恰好是 localhost。所以是这台手机上
-                          raw.githubusercontent.com 被解析到了本机 ——
-                          hosts 被改（各类 GitHub 加速/hosts 修改器都会写 127.0.0.1）
-                          或 VPN 的 DNS 劫持。
-
-                          同一个域名，加载却正常：图片是 **WebView 渲染的**，
-                          Chromium 自带解析器、不读系统 hosts；保存走原生
-                          InetAddress、会读。**两边问的不是同一个地方。**
-
-                          跟 DNS 较劲不如换个域名：本 App 本来就有 17 条
-                          加速通道（下载 Release 一直在用），把取图也接上去。
-                          直连失败时依次换通道重试 —— 换的是主机，
-                          本机那条 hosts 记录就管不着了。
-                        */
-                        resp = fetchImage(url, headers);
-                        if (resp == null || resp.code < 200 || resp.code >= 300 || resp.body == null) {
-                            toast("保存失败：图片下载不到"
-                                    + (resp == null ? "（直连与加速通道都连不上）"
-                                                     : "（HTTP " + resp.code + "）"));
-                            return;
-                        }
-                        data = resp.body;
-                    }
-                    }
-                    if (data == null || data.length == 0) {
-                        toast("保存失败：图片是空的");
-                        return;
-                    }
-
-                    /* 2) 推断 MIME 类型与扩展名。
-                     *    网络图片优先看响应头 Content-Type，本地 assets 没有响应头，
-                     *    从 URL 后缀猜，再不行按文件头魔数判（PNG/JPEG/GIF/WebP）。 */
-                    String mime = null;
-                    /*
-                      data: URI 自己就带着类型（data:image/png;base64,…），
-                      用它的 —— 而且**绝不能去读 resp**：data 分支下 resp 是 null，
-                      读它会 NPE 被下面的 catch 悄悄吞掉，mime 恒为 null，
-                      最后只能靠魔数猜，SVG 这类没有魔数的就全存成了 png。
-                    */
-                    if (isData) {
-                        mime = mimeOfDataUri(url);
-                    } else if (assetPath == null) {
-                        try { mime = resp.header("Content-Type"); } catch (Throwable ignored) {}
-                        if (mime != null) {
-                            int sc = mime.indexOf(';');
-                            if (sc > 0) mime = mime.substring(0, sc).trim();
-                        }
-                    }
-                    String ext = extFromMime(mime);
-                    if (ext == null) ext = extFromUrl(url);
-                    if (ext == null) ext = extFromMagic(data);
-                    if (ext == null) ext = "png";
-                    if (mime == null) mime = mimeFromExt(ext);
-
-                    /* 3) 用时间戳生成文件名，避免重名覆盖。 */
-                    String name = "githup_" + System.currentTimeMillis() + "." + ext;
-
-                    /* 4) 通过 MediaStore.Images 写进 Pictures/githup/。 */
-                    android.content.ContentValues cv = new android.content.ContentValues();
-                    cv.put(MediaStore.Images.Media.DISPLAY_NAME, name);
-                    cv.put(MediaStore.Images.Media.MIME_TYPE, mime);
-                    if (Build.VERSION.SDK_INT >= 29) {
-                        cv.put(MediaStore.Images.Media.RELATIVE_PATH,
-                                Environment.DIRECTORY_PICTURES + "/githup");
-                        cv.put(MediaStore.Images.Media.IS_PENDING, 1);
-                    }
-                    Uri item = activity.getContentResolver()
-                            .insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, cv);
-                    if (item == null) {
-                        toast("保存失败：无法创建相册条目");
-                        return;
-                    }
-                    java.io.OutputStream out = activity.getContentResolver().openOutputStream(item);
-                    if (out == null) {
-                        activity.getContentResolver().delete(item, null, null);
-                        toast("保存失败：无法写入相册");
-                        return;
-                    }
-                    out.write(data);
-                    out.flush();
-                    out.close();
-
-                    if (Build.VERSION.SDK_INT >= 29) {
-                        android.content.ContentValues done = new android.content.ContentValues();
-                        done.put(MediaStore.Images.Media.IS_PENDING, 0);
-                        activity.getContentResolver().update(item, done, null, null);
-                    } else {
-                        try {
-                            android.content.Intent scan = new android.content.Intent(
-                                    Intent.ACTION_MEDIA_SCANNER_SCAN_FILE, item);
-                            activity.sendBroadcast(scan);
-                        } catch (Throwable ignored) { }
-                    }
-
-                    toast("已保存到相册");
-                } catch (Throwable t) {
-                    /*
-                      记一笔：把**真实地址**和异常类型写进错误日志。
-
-                      连续几轮我都在猜这个地址长什么样（data:? 相对路径?
-                      空主机? loopback?），每次都猜错。与其继续猜，不如让
-                      App 自己说出来 —— 去「关于 → 下载错误日志」导一份，
-                      里面就有这里记的原文，一眼能定位。
-                    */
-                    try {
-                        LogBook.error(activity, "保存图片失败",
-                                briefUrl(url) + " | " + t.getClass().getSimpleName()
-                                        + ": " + (t.getMessage() == null ? "" : t.getMessage()));
-                    } catch (Throwable ignored) {}
-                    toast("保存失败：" + (t.getMessage() == null ? "未知错误" : t.getMessage()));
-                }
-            }
-        });
+        saveImage.saveImage(url);
     }
 
-    /**
-     * 把前端传的 URL 转成 assets 内的相对路径。
-     * 支持：file:///android_asset/web/img/foo.png、img/foo.png、./img/foo.png
-     * 不是本地 assets 资源时返回 null。
-     */
-    private static String assetPathOf(String url) {
-        if (url == null) return null;
-        String s = url;
-        String prefix = "file:///android_asset/";
-        if (s.startsWith(prefix)) {
-            s = s.substring(prefix.length());
-        } else if (s.startsWith("http://") || s.startsWith("https://")
-                || s.startsWith("data:")) {
-            return null;
-        } else {
-            /* 相对路径：前端的图片都在 assets/web/ 下 */
-            if (s.startsWith("./")) s = s.substring(2);
-            if (s.startsWith("/")) s = s.substring(1);
-            s = "web/" + s;
-        }
-        return s;
-    }
-
-    /**
-     * 这个地址能拿去建连吗？
-     *
-     * <p>判据只有一条：**解析出来的主机不能为空**。
-     * `https:///x`、`https:/x`、`https://` 这类「有协议没主机」的残缺串，
-     * 拿去建连会被解析成回环地址 —— 也就是那句莫名其妙的
-     * `failed to connect to localhost/127.0.0.1`。
-     *
-     * <p>用的是 java.net.URL，跟 Http 建连时那套解析**是同一个** ——
-     * 判据天然一致。这正是不能用别的解析器替代的原因（实测
-     * `https:///x` 在 Java 下 host=""，在 WHATWG 下却是 "docs"）。
-     *
-     * <p>data: / assets / 相对路径不走这条路，不必在这里管。
-     */
-    private static boolean hasHost(String url) {
-        if (url == null) return false;
-        try {
-            String host = new java.net.URL(url).getHost();
-            return host != null && host.length() > 0;
-        } catch (Throwable ignored) {
-            return false;   // 连解析都失败，更不该去连
-        }
-    }
-
-    /**
-     * 把可能很长的地址截成能进提示与日志的一小段。
-     * data: URI 动辄几十上百 KB，整条塞进提示框会把屏幕撑爆。
-     */
-    private static String briefUrl(String url) {
-        String s = String.valueOf(url);
-        if (s.length() <= 80) return s;
-        return s.substring(0, 80) + "…（共 " + s.length() + " 字符）";
-    }
-
-    /**
-     * data: URI 自带的 MIME，如 `data:image/png;base64,xxx` → `image/png`。
-     *
-     * <p>data: 分支下没有 HTTP 响应头可用，只能从这里取；取不到就退给
-     * 文件头魔数兜底。
-     */
-    private static String mimeOfDataUri(String u) {
-        try {
-            if (u == null || !u.startsWith("data:")) return null;
-            int comma = u.indexOf(',');
-            if (comma <= 0) return null;
-            String head = u.substring(5, comma);
-            int sc = head.indexOf(';');
-            String mime = (sc >= 0 ? head.substring(0, sc) : head).trim();
-            return mime.isEmpty() ? null : mime;
-        } catch (Throwable ignored) {
-            return null;
-        }
-    }
-
-    /**
-     * 把 data: URI 还原成字节。
-     *
-     * <p>字节本来就在字符串里 —— 这一步**不走网络**，所以「浏览器能存、
-     * 我们存不了」的那批快车道图片，靠它就能存下来。
-     *
-     * @return 解码后的字节；失败返回 null
-     */
-    private static byte[] decodeDataUri(String u) {
-        try {
-            if (u == null || !u.startsWith("data:")) return null;
-            int comma = u.indexOf(',');
-            if (comma < 0) return null;
-            String head = u.substring(5, comma);
-            String payload = u.substring(comma + 1);
-            boolean b64 = head.toLowerCase(java.util.Locale.US).indexOf("base64") >= 0;
-            if (b64) {
-                return android.util.Base64.decode(payload, android.util.Base64.DEFAULT);
-            }
-            /* 非 base64 的 data: 是百分号编码的文本（SVG 常见） */
-            return java.net.URLDecoder.decode(payload, "UTF-8").getBytes("UTF-8");
-        } catch (Throwable ignored) {
-            return null;
-        }
-    }
-
-    /**
-     * 取图片字节：先直连，失败就换加速通道。
-     *
-     * <p><b>为什么不再跟 DNS 较劲</b>：域名在本机被解析成 127.0.0.1 时，
-     * 直连必然失败（Http 里已加 DoH 兜底，但那要求 DoH 端点本身可达，
-     * 在 hosts 被改得比较狠的机器上未必成立）。换通道是**换主机**，
-     * 本机那条 hosts 记录就管不着了 —— 比修 DNS 可靠得多。
-     *
-     * <p><b>安全</b>：走镜像时**不带 Authorization**。GitHub token 只能发给
-     * GitHub，发给第三方镜像等于把令牌交出去。图片是公开资源，不需要令牌。
-     *
-     * <p>直连走原 headers；镜像只保留 Accept。
-     *
-     * @return 成功返回响应；全部失败返回直连的那份（好让错误码有意义），
-     *         连直连都抛异常时返回 null
-     */
-    private static Http.RawResponse fetchImage(String url, java.util.Map<String, String> headers) {
-        Http.RawResponse direct = null;
-        try {
-            Http.RawResponse r = Http.requestRaw("GET", url, headers);
-            if (ok200(r)) return r;
-            direct = r;                       // 留着，全失败时报它的码
-        } catch (Throwable ignored) {
-            /* 直连抛异常（连不上/被解析到本机），下面换通道 */
-        }
-
-        int n = Math.min(DownloadChannels.MIRRORS.length, DownloadChannels.VERIFIED_COUNT);
-        for (int i = 0; i < n; i++) {
-            String mirror = DownloadChannels.MIRRORS[i];
-            if (mirror == null || mirror.length() == 0) continue;
-            /* 云速是模板型拼法，不能 `前缀 + 原URL`；拼不出来（不是 raw 类
-               地址）就跳过这条 —— 图片几乎都是 raw 地址，通常是能拼出来的。 */
-            String murl = DownloadChannels.buildUrl(mirror, url);
-            if (murl == null) continue;
-            try {
-                java.util.Map<String, String> h = new java.util.HashMap<>();
-                h.put("Accept", "image/*,*/*;q=0.8");     /* 不带令牌 */
-                Http.RawResponse r = Http.requestRaw("GET", murl, h);
-                if (ok200(r)) return r;
-            } catch (Throwable ignored) {
-            }
-        }
-        return direct;
-    }
-
-    private static boolean ok200(Http.RawResponse r) {
-        return r != null && r.code >= 200 && r.code < 300 && r.body != null && r.body.length > 0;
-    }
-
-    private static String extFromMime(String mime) {
-        if (mime == null) return null;
-        String m = mime.toLowerCase(java.util.Locale.US);
-        if (m.contains("png")) return "png";
-        if (m.contains("jpeg") || m.contains("jpg")) return "jpg";
-        if (m.contains("gif")) return "gif";
-        if (m.contains("webp")) return "webp";
-        if (m.contains("bmp")) return "bmp";
-        return null;
-    }
-
-    private static String extFromUrl(String url) {
-        if (url == null) return null;
-        int q = url.indexOf('?');
-        String path = q > 0 ? url.substring(0, q) : url;
-        int dot = path.lastIndexOf('.');
-        if (dot < 0 || dot < path.lastIndexOf('/')) return null;
-        String e = path.substring(dot + 1).toLowerCase(java.util.Locale.US);
-        if (e.length() > 5) return null;
-        if (e.equals("jpeg")) return "jpg";
-        if (e.equals("png") || e.equals("jpg") || e.equals("gif")
-                || e.equals("webp") || e.equals("bmp")) return e;
-        return null;
-    }
-
-    private static String extFromMagic(byte[] data) {
-        if (data == null || data.length < 4) return null;
-        if ((data[0] & 0xFF) == 0x89 && (data[1] & 0xFF) == 0x50
-                && (data[2] & 0xFF) == 0x4E && (data[3] & 0xFF) == 0x47) return "png";
-        if ((data[0] & 0xFF) == 0xFF && (data[1] & 0xFF) == 0xD8
-                && (data[2] & 0xFF) == 0xFF) return "jpg";
-        if ((data[0] & 0xFF) == 0x47 && (data[1] & 0xFF) == 0x49
-                && (data[2] & 0xFF) == 0x46 && (data[3] & 0xFF) == 0x38) return "gif";
-        if (data.length >= 12 && (data[0] & 0xFF) == 0x52 && (data[1] & 0xFF) == 0x49
-                && (data[2] & 0xFF) == 0x46 && (data[3] & 0xFF) == 0x46
-                && (data[8] & 0xFF) == 0x57 && (data[9] & 0xFF) == 0x45
-                && (data[10] & 0xFF) == 0x42 && (data[11] & 0xFF) == 0x50) return "webp";
-        return null;
-    }
-
-    private static String mimeFromExt(String ext) {
-        if ("png".equals(ext)) return "image/png";
-        if ("jpg".equals(ext)) return "image/jpeg";
-        if ("gif".equals(ext)) return "image/gif";
-        if ("webp".equals(ext)) return "image/webp";
-        if ("bmp".equals(ext)) return "image/bmp";
-        return "image/png";
-    }
 
 
     /**
@@ -6700,23 +5434,12 @@ public class JsBridge {
 
     @JavascriptInterface
     public void haptic() {
-        activity.runOnUiThread(() -> {
-            try {
-                Vibrator v = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
-                if (v == null) return;
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    v.vibrate(VibrationEffect.createOneShot(12, VibrationEffect.DEFAULT_AMPLITUDE));
-                } else {
-                    v.vibrate(12);
-                }
-            } catch (Exception ignored) {
-            }
-        });
+        ui.haptic();
     }
 
     @JavascriptInterface
     public void clearCache() {
-        activity.runOnUiThread(() -> webView.clearCache(true));
+        ui.clearCache();
     }
 
     /**
@@ -6748,219 +5471,17 @@ public class JsBridge {
      */
     @JavascriptInterface
     public String safeInsets() {
-        int top = 0, left = 0, right = 0, mode = 0;
-        try {
-            Resources r = activity.getResources();
-            int idTop = r.getIdentifier("status_bar_height", "dimen", "android");
-            if (idTop > 0) top = r.getDimensionPixelSize(idTop);
-            mode = navBarMode();
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                /* statusBars 的 top 是准的；左右两块要把 displayCutout
-                   一起算进来 —— 只算 systemBars 的话横屏刘海那一条会漏掉。 */
-                int[] s = probeSystemBar(top);
-                top = s[0];
-                left = s[1];
-                right = s[2];
-            }
-        } catch (Throwable ignored) {
-        }
-        return "[" + top + "," + bottomInsetPx() + "," + left + "," + right + "," + mode + "]";
+        return ui.safeInsets();
     }
 
-    /** 探针三种结果：WebView 够不够得到屏幕最底边。 */
-    private static final int REACH_UNKNOWN = 0;
-    private static final int REACH_YES = 1;
-    private static final int REACH_NO = 2;
 
-    /**
-     * 页面底部到底还要让出多少 —— 这是 --safe-b 唯一该拿的数。
-     *
-     * ⚠️ 旧实现踩了两个坑，而且都只在「一部分机器」上发作，所以一直是
-     *    「有的手机上才离家出走」，难查也难复：
-     *
-     *   坑一：SDK < 30 那条分支直接读 navigation_bar_height 资源。
-     *      那是 ROM 写死的上限值（常见 48dp）—— **跟这台机器现在到底画没画
-     *      导航栏、画了多高，完全没有对应关系**：
-     *        · 手势导航：屏幕底部只有一条细线，资源里照样是 48dp；
-     *        · 实体 Home / mBack 的机子：压根没有软导航栏，资源里也照样 48dp。
-     *      minSdk 是 24，Android 7~10 全部走这条分支 —— 中招的就是它们。
-     *      同一份代码里上面还写着「手势导航下导航栏高度是很小的，不能写死
-     *      48dp」，可那条约束只落实在 SDK >= 30 的支路上，else 里照旧写死。
-     *
-     *   坑二：重复让位。
-     *      MainActivity 只声明了 LAYOUT_FULLSCREEN，**没有** LAYOUT_HIDE_NAVIGATION。
-     *      换言之系统已经替我们把导航栏那条留白留出来了 —— WebView 本身的矩形
-     *      就不含它。这种机器上再往前端塞一层 48dp，等于凭空多出一块，
-     *      底栏当然对不上屏幕底边。
-     *
-     * 这里改成量：拿 WebView 自己在屏幕坐标里的下沿去比屏幕真实底边。
-     *  · 够不到 → 系统已经留白了，页面自己**不用再让**，返回 0；
-     *  · 够得到 → 页面确实铺到了屏幕底，那要看系统条这会儿有没有画出来，
-     *    没画（全屏看视频、输入法改了 flags）返回 0，画了才返回它真实高度。
-     *
-     * 这套判据不依赖任何「照配置估算」的量，ROM 怎么改都一样成立。
-     * 量不出来时同样返回 0 —— 宁可贴底，也不要让底栏飘在半空中。
-     */
-    private int bottomInsetPx() {
-        try {
-            int navPx = 0;
-            boolean navVisible = true;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                WindowInsets ins = activity.getWindow().getDecorView().getRootWindowInsets();
-                if (ins != null) {
-                    navVisible = ins.isVisible(WindowInsets.Type.navigationBars());
-                    navPx = ins.getInsets(WindowInsets.Type.navigationBars()).bottom;
-                } else {
-                    return 0;   // 连 insets 都没有，别猜
-                }
-            } else {
-                int idBot = activity.getResources()
-                        .getIdentifier("navigation_bar_height", "dimen", "android");
-                if (idBot > 0) navPx = activity.getResources().getDimensionPixelSize(idBot);
-            }
-            return decideBottomInset(reachScreenBottom(), navPx, navVisible);
-        } catch (Throwable ignored) {
-            return 0;
-        }
-    }
-
-    /**
-     * 把「够不够得到 + 系统条多大 + 画没画」折成一个该让的数。
-     * 抽成纯函数是为了能照着同一份判据写单测，没有别的意思。
-     */
-    static int decideBottomInset(int reach, int navPx, boolean navVisible) {
-        if (navPx < 0) navPx = 0;
-        switch (reach) {
-            case REACH_NO:
-                return 0;                       // 系统已留白，页面不再让一次
-            case REACH_YES:
-                return navVisible ? navPx : 0;  // 真铺到底：只在系统条露出来时才让
-            default:
-                return 0;                       // 量不出来就别猜
-        }
-    }
-
-    /**
-     * WebView 的下沿能不能碰到屏幕最底边。
-     *
-     * 用 getRealMetrics 拿的是**含系统装饰区**的真实屏幕高（getDefaultDisplay
-     * 的另一组 METRICS 会被状态栏/导航栏扣掉，不能用），
-     * getLocationOnScreen 拿的是 View 在屏幕坐标系里的位置 —— 两者同坐标系。
-     *
-     * 布局还没走完时宽高为 0，这时返回 UNKNOWN，绝不能当成「贴到底」。
-     */
-    private int reachScreenBottom() {
-        View v = webView;
-        if (v == null) v = activity.getWindow().getDecorView();
-        if (v == null || v.getWidth() <= 0 || v.getHeight() <= 0) return REACH_UNKNOWN;
-        int[] loc = new int[2];
-        v.getLocationOnScreen(loc);
-        DisplayMetrics dm = new DisplayMetrics();
-        try {
-            activity.getWindowManager().getDefaultDisplay().getRealMetrics(dm);
-        } catch (Throwable t) {
-            return REACH_UNKNOWN;
-        }
-        if (dm.heightPixels <= 0) return REACH_UNKNOWN;
-        /* 留 1px 容差：某些 ROM 因为舍入会让 View 差一个像素够不到 */
-        return (loc[1] + v.getHeight()) >= dm.heightPixels - 1 ? REACH_YES : REACH_NO;
-    }
-
-    @android.annotation.TargetApi(Build.VERSION_CODES.R)
-    private int[] probeSystemBar(int fallbackTop) {
-        int[] out = new int[]{fallbackTop, 0, 0};
-        try {
-            WindowInsets ins = activity.getWindow().getDecorView().getRootWindowInsets();
-            if (ins == null) return out;
-            out[0] = ins.getInsets(WindowInsets.Type.statusBars()).top;
-            android.graphics.Insets side = ins.getInsets(
-                    WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
-            out[1] = side.left;
-            out[2] = side.right;
-        } catch (Throwable ignored) {
-        }
-        return out;
-    }
-
-    /**
-     * 当前导航栏形态：0=未知 / 1=三键 / 2=两键 / 3=手势 / 9=没有软导航栏。
-     *
-     * config_navBarInteractionMode 是 AOSP 与各主流 ROM 都会写的一条内部常量
-     * （0=三键 1=两键 2=手势），比 WindowInsets 更早可用，也不受「这会儿
-     * 临时隐藏了没有」影响。取不到时退一步：ViewConfiguration 报告有实体
-     * 菜单键的老机型没有软导航栏，归到 9。
-     */
-    private int navBarMode() {
-        try {
-            Resources r = activity.getResources();
-            int id = r.getIdentifier("config_navBarInteractionMode", "integer", "android");
-            if (id > 0) {
-                switch (r.getInteger(id)) {
-                    case 0: return 1;
-                    case 1: return 2;
-                    case 2: return 3;
-                    default: return 0;
-                }
-            }
-        } catch (Throwable ignored) {
-        }
-        try {
-            if (ViewConfiguration.get(activity).hasPermanentMenuKey()) return 9;
-        } catch (Throwable ignored) {
-        }
-        return 0;
-    }
 
     @JavascriptInterface
     public void setStatusBar(String colorHex) {
-        activity.runOnUiThread(() -> {
-            try {
-                /* ⚠️ 传进来的实色会被**忽略**，状态栏/导航栏一律保持透明。
-                 *
-                 * 原因：状态栏是盖在 WebView 之上的一条系统绘制区。给它上实色，
-                 * 就等于在页面顶部贴了一条不透明的色带 —— 顶栏的毛玻璃再怎么调，
-                 * 上面那一条永远是死白/死黑，看起来就是「标题被顶下去、上方空一块」。
-                 * 透明之后露出来的是 WebView 里顶栏自己的玻璃，玻璃才能一直糊到
-                 * 屏幕最顶上（iOS 就是这个行为）。
-                 *
-                 * 参数保留不删：前端还在按主题传 #ffffff / #010409，只是不再采用。
-                 * 这里仍然按颜色算一次明暗，用来决定状态栏图标是深色还是浅色。 */
-                int color = android.graphics.Color.parseColor(colorHex);
-                boolean light = isLightColor(color);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    activity.getWindow().setStatusBarColor(android.graphics.Color.TRANSPARENT);
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    View decor = activity.getWindow().getDecorView();
-                    int flags = decor.getSystemUiVisibility();
-                    if (light) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                    else flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
-                    /* 保持 edge-to-edge：内容继续延伸到状态栏底下，
-                       否则透明状态栏会让顶栏整体下移，又变成「上面空一块」。 */
-                    flags |= View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
-                    decor.setSystemUiVisibility(flags);
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    activity.getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
-                    View decor = activity.getWindow().getDecorView();
-                    int flags = decor.getSystemUiVisibility();
-                    if (light) flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                    else flags &= ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
-                    decor.setSystemUiVisibility(flags);
-                }
-            } catch (Exception ignored) {
-            }
-        });
+        ui.setStatusBar(colorHex);
     }
 
-    private static boolean isLightColor(int color) {
-        double lum = (0.299 * android.graphics.Color.red(color)
-                + 0.587 * android.graphics.Color.green(color)
-                + 0.114 * android.graphics.Color.blue(color)) / 255.0;
-        return lum > 0.6;
-    }
+
 
     /**
      * 系统当前是否处于深色模式。
@@ -6975,22 +5496,12 @@ public class JsBridge {
      */
     @JavascriptInterface
     public boolean systemDark() {
-        try {
-            int mode = activity.getResources().getConfiguration().uiMode
-                    & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
-            return mode == android.content.res.Configuration.UI_MODE_NIGHT_YES;
-        } catch (Exception e) {
-            return false;
-        }
+        return ui.systemDark();
     }
 
     @JavascriptInterface
     public String version() {
-        try {
-            return activity.getPackageManager().getPackageInfo(activity.getPackageName(), 0).versionName;
-        } catch (Exception e) {
-            return "1.0.0";
-        }
+        return ui.version();
     }
 
     @JavascriptInterface

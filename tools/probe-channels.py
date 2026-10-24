@@ -26,6 +26,7 @@ CI runner 没有这个限制，是真实的公网出口。所以验证必须在�
     python3 tools/probe-channels.py <release-url>   # 指定目标
 """
 
+import os
 import sys
 import time
 import json
@@ -139,13 +140,29 @@ def kb(bps):
 def main():
     target = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_TARGET
 
-    # 尽量从源码里读通道清单，避免脚本和 Java 不同步
+    # 尽量从源码里读通道清单，避免脚本和源码不同步
+    #
+    # Kotlin 迁移后这个类从 DownloadChannels.java 变成了 DownloadChannels.kt，
+    # 声明也从 `static final String[] MIRRORS` 变成了 `val MIRRORS: Array<String> = arrayOf(`。
+    # 这里两种后缀、两种写法都认 —— 否则脚本会静默回退到内置副本，
+    # 源码里加了通道 CI 却还在测老清单，属于最难查的那类不同步。
     mirrors = list(MIRRORS)
     try:
-        src = open("app/src/main/java/com/hubmobile/app/DownloadChannels.java",
-                   encoding="utf-8").read()
-        i = src.index("static final String[] MIRRORS")
-        j = src.index("};", i)
+        src = None
+        for path in ("app/src/main/java/com/hubmobile/app/DownloadChannels.kt",
+                     "app/src/main/java/com/hubmobile/app/DownloadChannels.java"):
+            if os.path.exists(path):
+                src = open(path, encoding="utf-8").read()
+                break
+        if src is None:
+            raise IOError("DownloadChannels 源码不在（.kt/.java 都没找到）")
+
+        if "val MIRRORS" in src:
+            i = src.index("val MIRRORS")
+            j = src.index("\n    )", i)          # Kotlin: arrayOf( ... ) 收尾
+        else:
+            i = src.index("static final String[] MIRRORS")
+            j = src.index("};", i)               # Java:   { ... }; 收尾
         import re
         found = re.findall(r'"(https://[^"]+)"', src[i:j])
         if len(found) >= 10:

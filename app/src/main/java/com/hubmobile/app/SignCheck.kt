@@ -79,17 +79,25 @@ class SignCheck private constructor() {
                         ctx.packageName,
                         PackageManager.GET_SIGNING_CERTIFICATES
                     )
-                    val arr: Array<Signature>? = if (pi.signingInfo.hasMultipleSigners()) {
-                        pi.signingInfo.apkContentsSigners
+                    /*
+                     * signingInfo 在部分系统上是可空/取不到的，别直接点下去：
+                     * 空指针会一路抛到启动校验里，表现是「一开 App 就闪退」。
+                     * 先取到局部变量再判空 —— 直接写 pi.signingInfo.xxx 时
+                     * Kotlin 会报「可变属性无法智能转换」，取局部变量顺手也解决了。
+                     */
+                    val si = pi.signingInfo ?: return null
+                    val arr: Array<Signature>? = if (si.hasMultipleSigners()) {
+                        si.apkContentsSigners
                     } else {
-                        pi.signingInfo.signingCertificateHistory
+                        si.signingCertificateHistory
                     }
                     if (arr == null || arr.isEmpty()) null else sha256(arr[0])
                 } else {
                     @Suppress("DEPRECATION")
                     val old = pm.getPackageInfo(ctx.packageName, PackageManager.GET_SIGNATURES)
-                    if (old.signatures == null || old.signatures.isEmpty()) null
-                    else sha256(old.signatures[0])
+                    val legacy: Array<Signature>? = old.signatures
+                    if (legacy == null || legacy.isEmpty()) null
+                    else sha256(legacy[0])
                 }
             } catch (t: Throwable) {
                 null
