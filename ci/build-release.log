@@ -1,0 +1,110 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.2/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+[版本锁定] versionName=1.2.16 versionCode=1002016（已与 version.lock 核对一致）
+
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders FROM-CACHE
+> Task :app:mergeReleaseNativeLibs NO-SOURCE
+> Task :app:stripReleaseDebugSymbols NO-SOURCE
+> Task :app:extractReleaseNativeSymbolTables NO-SOURCE
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:buildKotlinToolingMetadata
+> Task :app:checkKotlinGradlePluginConfigurationErrors
+> Task :app:generateReleaseBuildConfig
+> Task :app:checkReleaseAarMetadata
+> Task :app:generateReleaseResValues FROM-CACHE
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:generateReleaseResources UP-TO-DATE
+> Task :app:packageReleaseResources
+> Task :app:parseReleaseLocalResources FROM-CACHE
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksRelease FROM-CACHE
+> Task :app:processReleaseMainManifest
+> Task :app:mergeReleaseResources
+> Task :app:processReleaseManifest
+> Task :app:javaPreCompileRelease FROM-CACHE
+> Task :app:desugarReleaseFileDependencies
+> Task :app:processReleaseManifestForPackage
+> Task :app:mergeExtDexRelease
+> Task :app:mergeReleaseArtProfile
+> Task :app:mergeReleaseShaders FROM-CACHE
+> Task :app:compileReleaseShaders NO-SOURCE
+> Task :app:generateReleaseAssets UP-TO-DATE
+> Task :app:mergeReleaseAssets FROM-CACHE
+> Task :app:processReleaseResources
+> Task :app:compressReleaseAssets
+> Task :app:optimizeReleaseResources
+> Task :app:collectReleaseDependencies
+> Task :app:sdkReleaseDependencyData
+> Task :app:validateSigningRelease
+> Task :app:writeReleaseAppMetadata
+> Task :app:writeReleaseSigningConfigVersions
+
+> Task :app:compileReleaseKotlin
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/CrashLog.kt:142:42 'versionCode: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/DownloadProvider.kt:208:28 Parameter 'ctx' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/Http.kt:699:42 Parameter 'port' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ImageProxy.kt:274:45 Unsafe use of a nullable receiver of type String?
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/LogBook.kt:285:38 Parameter 'ctx' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/MainActivity.kt:460:26 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/MainActivity.kt:568:70 Parameter '_mimeType' is never used, could be renamed to _
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/MainActivity.kt:568:81 Parameter '_contentLength' is never used, could be renamed to _
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/MainActivity.kt:605:32 Parameter 'dead' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/NetBridge.kt:32:70 Elvis operator (?:) always returns the left operand of non-nullable type String
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/NetBridge.kt:33:58 Elvis operator (?:) always returns the left operand of non-nullable type String
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/NetBridge.kt:57:55 Elvis operator (?:) always returns the left operand of non-nullable type String
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/NotifWatchReceiver.kt:264:17 Condition 'token == null' is always 'false'
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/NotifWatchReceiver.kt:447:39 'constructor Builder(Context!)' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/SaveImageBridge.kt:311:28 'toLowerCase(Locale): String' is deprecated. Use lowercase() instead.
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/SaveImageBridge.kt:372:22 'toLowerCase(Locale): String' is deprecated. Use lowercase() instead.
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/SaveImageBridge.kt:386:41 'toLowerCase(Locale): String' is deprecated. Use lowercase() instead.
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/SignCheck.kt:98:57 'signatures: Array<(out) Signature!>!' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:262:17 Type mismatch: inferred type is File? but File was expected
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:327:25 Condition 'e.key != null' is always 'true'
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:327:42 Condition 'e.value != null' is always 'true'
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:439:27 Type mismatch: inferred type is File? but File was expected
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:571:61 Parameter 'attempt' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:587:25 Condition 'e.key != null' is always 'true'
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:587:42 Condition 'e.value != null' is always 'true'
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:696:20 Unnecessary non-null assertion (!!) on a non-null receiver of type OutputStream
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:773:16 Unnecessary non-null assertion (!!) on a non-null receiver of type OutputStream
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:776:18 Unnecessary non-null assertion (!!) on a non-null receiver of type InputStream
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:507:27 'constructor Builder(Context!)' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:523:15 'setPriority(Int): Notification.Builder!' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:523:40 'PRIORITY_MIN: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:539:15 'setPriority(Int): Notification.Builder!' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:539:40 'PRIORITY_MIN: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:584:15 'setPriority(Int): Notification.Builder!' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:584:40 'PRIORITY_LOW: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:29:63 'VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:234:39 'getter for systemUiVisibility: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:236:39 'SYSTEM_UI_FLAG_LIGHT_STATUS_BAR: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:238:40 'SYSTEM_UI_FLAG_LIGHT_STATUS_BAR: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:242:44 'SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:243:37 'SYSTEM_UI_FLAG_LAYOUT_STABLE: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:244:27 'setter for systemUiVisibility: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:249:39 'getter for systemUiVisibility: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:251:39 'SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:253:40 'SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:255:27 'setter for systemUiVisibility: Int' is deprecated. Deprecated in Java
+
+> Task :app:compileReleaseJavaWithJavac
+Note: /home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/JsBridge.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :app:dexBuilderRelease
+> Task :app:mergeReleaseGlobalSynthetics
+> Task :app:processReleaseJavaRes
+> Task :app:mergeDexRelease
+> Task :app:compileReleaseArtProfile
+> Task :app:mergeReleaseJavaResource
+> Task :app:packageRelease
+> Task :app:createReleaseApkListingFileRedirect
+> Task :app:assembleRelease
+
+BUILD SUCCESSFUL in 46s
+40 actionable tasks: 33 executed, 7 from cache
