@@ -1,0 +1,33 @@
+# ═══════════════════════════════════════════════════════════════
+# GitHub 语言统计校准
+#
+# GitHub（linguist）是按【字节数】算语言占比的，不是按行数。
+# 本仓库的字节大头恰好都不在原生层：
+#
+#   JavaScript   1,563,908 B   ← assets/web 下的前端页面 + 第三方库
+#   Markdown       479,404 B   ← CHANGELOG 累积 + 测试素材
+#   Kotlin         462,803 B   ← 真正的原生源码
+#   Java           277,131 B
+#
+# 于是语言栏长期显示 JavaScript 约 50%、Kotlin 只有 15% 上下，
+# 看着像「这是个前端项目」。但原生层里 Kotlin 已经占 63.7%
+#（462,803 / 739,934），Java 只占 36.3%，且 Java 只剩 JsBridge
+# 一个文件还在往下拆。
+#
+# 下面把三类「不是开发维护的源码、只是打进包里的资源」排除出统计，
+# 让语言栏回到真实技术栈。
+#
+# ⚠️ 这只是校准统计口径，不是减少前端代码量。想让 Kotlin 在真实
+#    代码量上也占优，得把前端页面逐个 Compose 化 —— 那是另一件事，
+#    代价是失去热更新与整页翻译能力。
+# ═══════════════════════════════════════════════════════════════
+
+# 1) 前端资源：HTML / CSS / JS 与 vendor 第三方库，编译期原样打进 APK
+app/src/main/assets/web/**      linguist-vendored
+
+# 2) 测试用例素材：8 个开源项目的 README 原文，用来测 Markdown 渲染效果
+tools/readme/**                 linguist-vendored
+
+# 3) 累积型文档：变更历史与发布说明，不是源码
+CHANGELOG.md                    linguist-documentation
+RELEASE_NOTES.md                linguist-documentation
