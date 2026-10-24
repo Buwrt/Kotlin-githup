@@ -1879,7 +1879,7 @@ public class JsBridge {
                         continue;
                     }
                     /* 走到这里 = 真的因为慢要换道了，这是一次实打实的「慢」 */
-                    recordSlowEvent(now);
+                    probe.recordSlowEvent(now);
                     switchChannel(t, "速度太慢");
                 }
             }

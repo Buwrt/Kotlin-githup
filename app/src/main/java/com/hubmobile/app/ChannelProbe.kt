@@ -196,8 +196,13 @@ internal class ChannelProbe(
         if (avg < slowThresholdBps) recordSlowEvent(now)
     }
 
-    /** 记一次「慢」，够次数就提醒 */
-    private fun recordSlowEvent(now: Long) {
+    /**
+     * 记一次「慢」，够次数就提醒。
+     *
+     * 由 JsBridge 在「真的因为慢要换道」时调用 —— 那是实打实的一次慢，
+     * 不是采样窗口里的估算。
+     */
+    fun recordSlowEvent(now: Long) {
         slowEvents.addLast(now)
         while (!slowEvents.isEmpty() && slowEvents.peekFirst() < now - slowWindowMs) {
             slowEvents.pollFirst()
