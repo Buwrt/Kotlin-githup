@@ -1,0 +1,15 @@
+// 顶层构建脚本
+plugins {
+    id 'com.android.application' version '8.1.4' apply false
+    /*
+     * Kotlin 插件版本与 AGP 的对应关系是硬约束，随手升会构建失败：
+     *   AGP 8.1.x  →  Kotlin 1.9.x（本库取 1.9.24，最后一个 1.9 补丁版）
+     *   Kotlin 2.0 起要求 AGP 8.2+，要升 Kotlin 就得先升 AGP。
+     * Gradle 是 8.2，与两者都兼容，不用动。
+     */
+    id 'org.jetbrains.kotlin.android' version '1.9.24' apply false
+}
+
+tasks.register('clean', Delete) {
+    delete rootProject.buildDir
+}
