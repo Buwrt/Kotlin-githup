@@ -29,53 +29,22 @@ Daemon will be stopped at the end of the build
 > Task :app:javaPreCompileRelease FROM-CACHE
 > Task :app:desugarReleaseFileDependencies
 > Task :app:processReleaseManifestForPackage
+> Task :app:mergeExtDexRelease
 > Task :app:mergeReleaseArtProfile
 > Task :app:mergeReleaseShaders FROM-CACHE
 > Task :app:compileReleaseShaders NO-SOURCE
 > Task :app:generateReleaseAssets UP-TO-DATE
 > Task :app:mergeReleaseAssets FROM-CACHE
+> Task :app:compressReleaseAssets
 > Task :app:collectReleaseDependencies
 > Task :app:processReleaseResources
-> Task :app:compressReleaseAssets
 > Task :app:sdkReleaseDependencyData
 > Task :app:validateSigningRelease
 > Task :app:writeReleaseAppMetadata
 > Task :app:writeReleaseSigningConfigVersions
 > Task :app:optimizeReleaseResources
-> Task :app:mergeExtDexRelease
 
 > Task :app:compileReleaseKotlin FAILED
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:660:17 Expecting property name or receiver type
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:663:19 Type expected
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:663:19 Unexpected tokens (use ';' to separate expressions on the same line)
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:664:50 Unexpected tokens (use ';' to separate expressions on the same line)
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:668:45 Expecting an expression
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:668:45 Expecting ')'
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:668:48 Unexpected tokens (use ';' to separate expressions on the same line)
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:622:31 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:623:31 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:624:53 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:625:35 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:666:52 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:666:71 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:667:19 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:667:34 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:682:25 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:683:54 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:684:53 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:685:76 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:686:76 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:697:39 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:697:55 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:717:53 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:717:68 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:717:84 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:729:48 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:729:63 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:730:19 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:730:40 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:730:62 Unresolved reference: str
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:731:19 Unresolved reference: str
 e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/NativeMainActivity.kt:13:43 Unresolved reference: arrangement
 e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/NativeMainActivity.kt:123:5 Unresolved reference: LaunchedEffect
 e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/NativeMainActivity.kt:125:13 Suspend function 'withContext' should be called only from a coroutine or another suspend function
@@ -385,5 +354,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 1m 4s
+BUILD FAILED in 1m 15s
 31 actionable tasks: 24 executed, 7 from cache
