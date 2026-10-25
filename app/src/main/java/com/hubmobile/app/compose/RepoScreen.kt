@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -274,7 +275,6 @@ fun RepoScreen(
 }
 
 @Composable
-@Composable
 private fun RepoHeader(
     r: RepoInfo,
     avatar: android.graphics.Bitmap?,
@@ -353,7 +353,7 @@ private fun RepoHeader(
             if (r.language.isNotBlank()) {
                 Spacer(Modifier.width(14.dp))
                 Box(Modifier.size(8.dp).background(
-                    androidx.compose.ui.graphics.Color(GitHubApi.langColor(r.language)),
+                    androidx.compose.ui.graphics.Color(GitHubApi.langColor(r.language).toULong()),
                     androidx.compose.foundation.shape.CircleShape))
                 Spacer(Modifier.width(5.dp))
                 Text(r.language, color = c.fgMuted, fontSize = 12.sp)

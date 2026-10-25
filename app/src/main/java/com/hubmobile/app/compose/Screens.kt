@@ -241,7 +241,7 @@ fun RepoRow(
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (r.language.isNotBlank()) {
                 Box(Modifier.size(8.dp).clip(CircleShape)
-                    .background(Color(GitHubApi.langColor(r.language))))
+                    .background(Color(GitHubApi.langColor(r.language).toULong())))
                 Spacer(Modifier.width(5.dp))
                 Text(r.language, color = c.fgMuted, fontSize = 11.sp)
                 Spacer(Modifier.width(12.dp))

@@ -1003,26 +1003,6 @@ object GitHubApi {
         JSONObject(s).safe("full_name").ifBlank { null }
     } catch (e: Throwable) { null }
 
-    /* ---------- 语言色（对齐 api.js 的 U.langColor） ---------- */
-
-    private val LANG_COLORS = mapOf(
-        "JavaScript" to 0xFFF1E05A, "TypeScript" to 0xFF3178C6, "Python" to 0xFF3572A5,
-        "Java" to 0xFFB07219, "Kotlin" to 0xFFA97BFF, "Go" to 0xFF00ADD8,
-        "Rust" to 0xFFDEA584, "C++" to 0xFFF34B7D, "C" to 0xFF555555,
-        "C#" to 0xFF178600, "Ruby" to 0xFF701516, "PHP" to 0xFF4F5D95,
-        "Swift" to 0xFFF05138, "Dart" to 0xFF00B4AB, "HTML" to 0xFFE34C26,
-        "CSS" to 0xFF563D7C, "SCSS" to 0xFFC6538C, "Vue" to 0xFF41B883,
-        "Shell" to 0xFF89E051, "Lua" to 0xFF000080, "Scala" to 0xFFC22D40,
-        "Perl" to 0xFF0298C3, "R" to 0xFF198CE7, "Objective-C" to 0xFF438EFF,
-        "Dockerfile" to 0xFF384D54, "Makefile" to 0xFF427819,
-        "Jupyter Notebook" to 0xFFDA5B0B, "Elixir" to 0xFF6E4A7E,
-        "Haskell" to 0xFF5E5086, "Julia" to 0xFFA270BA, "Zig" to 0xFFEC915C,
-        "Vim Script" to 0xFF199F4B, "PowerShell" to 0xFF012456,
-        "Assembly" to 0xFF6E4C13, "Nix" to 0xFF7E7EFF
-    )
-
-    fun langColor(lang: String): Long = LANG_COLORS[lang] ?: 0xFF8B949E
-
     /* ---------- 个人资料编辑 ---------- */
 
     /**
