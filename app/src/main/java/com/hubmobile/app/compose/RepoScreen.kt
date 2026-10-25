@@ -301,8 +301,9 @@ private fun RepoHeader(r: RepoInfo, avatar: Bitmap?) {
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (r.language.isNotBlank()) {
+                val langDot = LocalHubColors.current.accent
                 Canvas(Modifier.size(10.dp)) {
-                    drawCircle(color = LocalHubColors.current.accent, radius = size.minDimension / 2f)
+                    drawCircle(color = langDot, radius = size.minDimension / 2f)
                 }
                 Spacer(Modifier.width(6.dp))
                 Text(r.language, color = LocalHubColors.current.fgMuted, fontSize = 12.sp)
