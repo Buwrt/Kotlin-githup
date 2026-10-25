@@ -23,27 +23,26 @@ Daemon will be stopped at the end of the build
 > Task :app:parseReleaseLocalResources FROM-CACHE
 > Task :app:createReleaseCompatibleScreenManifests
 > Task :app:extractDeepLinksRelease FROM-CACHE
-> Task :app:processReleaseMainManifest
 > Task :app:mergeReleaseResources
+> Task :app:processReleaseMainManifest
 > Task :app:processReleaseManifest
 > Task :app:javaPreCompileRelease FROM-CACHE
 > Task :app:desugarReleaseFileDependencies
 > Task :app:mergeReleaseShaders FROM-CACHE
 > Task :app:mergeReleaseArtProfile
 > Task :app:compileReleaseShaders NO-SOURCE
-> Task :app:processReleaseManifestForPackage
 > Task :app:generateReleaseAssets UP-TO-DATE
 > Task :app:mergeReleaseAssets FROM-CACHE
 > Task :app:collectReleaseDependencies
 > Task :app:compressReleaseAssets
-> Task :app:processReleaseResources
 > Task :app:sdkReleaseDependencyData
 > Task :app:validateSigningRelease
+> Task :app:processReleaseManifestForPackage
 > Task :app:writeReleaseAppMetadata
 > Task :app:writeReleaseSigningConfigVersions
+> Task :app:processReleaseResources
 > Task :app:optimizeReleaseResources
 > Task :app:mergeExtDexRelease
-
 > Task :app:compileReleaseKotlin
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:183:48 Parameter 'speed' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:185:42 Unsafe use of a nullable receiver of type LongArray?
@@ -106,7 +105,6 @@ w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hu
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Icons.kt:40:13 Variable 'stroke' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Icons.kt:41:13 Variable 'fill' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Icons.kt:230:22 Parameter 'scope' is never used
-w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/NativeMainActivity.kt:106:5 Parameter 'onThemeChange' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:267:9 Variable 'c' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:390:23 Parameter 'login' is never used
 
@@ -124,5 +122,5 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :app:createReleaseApkListingFileRedirect
 > Task :app:assembleRelease
 
-BUILD SUCCESSFUL in 1m 4s
+BUILD SUCCESSFUL in 1m 31s
 40 actionable tasks: 33 executed, 7 from cache
