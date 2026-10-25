@@ -222,6 +222,32 @@ object GitHubApi {
         null
     }
 
+    /**
+     * 登录校验专用：返回真实结果，不像 me() 那样把异常吞成 null。
+     *
+     * 为什么要单独开一个：me() 的 catch-all 会把
+     *   401 令牌无效 / 403 被限流 / 网络异常 / 返回体解析失败
+     * 四种完全不同的情况全都变成 null，界面只能含糊报
+     * 「令牌无效或网络不可用」。登录时必须分得清。
+     */
+    data class MeResult(val code: Int, val user: UserInfo?)
+
+    fun meChecked(ctx: Context): MeResult {
+        val r: Http.Response = try {
+            Http.request("GET", "$API/user", null, headers(ctx))
+        } catch (e: Throwable) {
+            return MeResult(-1, null)          // 网络不可用
+        }
+        if (r.code == 401) return MeResult(401, null)   // 令牌无效 / 已过期
+        if (r.code == 403) return MeResult(403, null)   // 被限流
+        if (r.code !in 200..299) return MeResult(r.code, null)
+        return try {
+            MeResult(200, UserInfo.from(JSONObject(r.body)))
+        } catch (e: Throwable) {
+            MeResult(-2, null)                  // 返回体解析失败
+        }
+    }
+
     fun user(ctx: Context, login: String): UserInfo =
         UserInfo.from(JSONObject(get(ctx, "$API/users/$login")))
 

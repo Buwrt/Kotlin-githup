@@ -19,12 +19,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -153,25 +152,21 @@ private fun AppRoot(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        when {
-                            settings -> "设置"
-                            login -> "登录"
-                            totp -> "两步验证器"
-                            downloads -> "下载管理"
-                            newRepo -> "新建仓库"
-                            newRelease != null -> "创建 Release"
-                            detail != null -> "#${detail!!.third}"
-                            repo != null -> repo!!.let { "${it.first}/${it.second}" }
-                            user != null -> user!!
-                            else -> "githup"
-                        },
-                        fontSize = 16.sp, color = c.fg, maxLines = 1
-                    )
-                },
-                navigationIcon = {
+            /*
+             * 顶栏不用 material3 的 TopAppBar —— 它内部那层 Surface 自带
+             * tonal elevation，在 header 与 canvas 同色（都是 #010409）时
+             * 会在顶栏下缘压出一条模糊的亮带，看着像多出来的一条线。
+             *
+             * 这里改成按网页版 #appbar 自绘：
+             *   背景 var(--header-bg)，底部 border-bottom: 1px solid var(--border)
+             * 网页版本来就有这条 1px 线，照抄即可 —— 干净、且和网页版一致。
+             */
+            Column(Modifier.background(c.header)) {
+                Row(
+                    Modifier.fillMaxWidth().height(52.dp)
+                        .padding(horizontal = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     if (inSub) {
                         TextButton(onClick = {
                             when {
@@ -190,11 +185,32 @@ private fun AppRoot(
                             Text("‹", fontSize = 26.sp, fontWeight = FontWeight.Light,
                                 color = c.accent)
                         }
+                    } else {
+                        Spacer(Modifier.size(6.dp))
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = c.header, titleContentColor = c.fg)
-            )
+                    Text(
+                        when {
+                            settings -> "设置"
+                            login -> "登录"
+                            totp -> "两步验证器"
+                            downloads -> "下载管理"
+                            newRepo -> "新建仓库"
+                            newRelease != null -> "创建 Release"
+                            detail != null -> "#${detail!!.third}"
+                            repo != null -> repo!!.let { "${it.first}/${it.second}" }
+                            user != null -> user!!
+                            else -> "githup"
+                        },
+                        // .appbar-title: 16px / 600 / 左对齐 / 单行省略
+                        fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
+                        color = c.fg, maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f).padding(horizontal = 6.dp)
+                    )
+                }
+                // border-bottom: 1px solid var(--border)
+                Divider(color = c.border, thickness = 1.dp)
+            }
         },
         bottomBar = {
             if (!inSub) {

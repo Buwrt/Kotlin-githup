@@ -1,6 +1,7 @@
 package com.hubmobile.app.compose
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -66,104 +67,155 @@ fun LoginScreen(
     var tk by remember { mutableStateOf(SecurePrefs.get(ctx, GitHubApi.TOKEN_KEY, "")) }
     var show by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    /*
+     * 之前这里只有一句「令牌无效或网络不可用」——因为 me() 把 401/403/
+     * 断网/解析失败 全 catch 成 null，四种情况没法区分。
+     * 现在用 meChecked() 拿真实状态码，分开报。
+     */
     var err by remember { mutableStateOf<String?>(null) }
     val saved = remember { SecurePrefs.get(ctx, GitHubApi.TOKEN_KEY, "") }
 
+    // 网页版 .login-wrap padding:24px 20px；title 22/600；sub 13；card radius 8
     Column(
-        Modifier.fillMaxSize().background(c.canvas).padding(24.dp),
+        Modifier.fillMaxSize().background(c.canvas)
+            .padding(horizontal = 20.dp, vertical = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(Modifier.height(40.dp))
+        // .login-logo：居中，图标本身着色 var(--fg)
         HubIcon("mark-github", Modifier.size(64.dp), c.fg)
-        Spacer(Modifier.height(10.dp))
-        Text("githup", color = c.fg, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(14.dp))
+        // .login-title font-size:22px; font-weight:600
+        Text("githup", color = c.fg, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(6.dp))
+        // .login-sub font-size:13px; margin:6px 0 26px
         Text("使用 GitHub 账号登录，畅享完整的仓库与协作功能",
-            color = c.fgMuted, fontSize = 12.sp)
+            color = c.fgMuted, fontSize = 13.sp)
+        Spacer(Modifier.height(26.dp))
 
-        Spacer(Modifier.height(28.dp))
-        Column(Modifier.fillMaxWidth().background(c.bg,
-            androidx.compose.foundation.shape.RoundedCornerShape(12.dp)).padding(14.dp)) {
-            Text("个人访问令牌（Personal Access Token）", color = c.fgMuted, fontSize = 11.sp)
+        // .login-card：background var(--bg); border 1px solid var(--border); radius 8; padding 16
+        Column(
+            Modifier.fillMaxWidth()
+                .background(c.bg, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                .border(1.dp, c.border, androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                .padding(16.dp)
+        ) {
+            // .field > label font-size:13px; font-weight:600; margin-bottom:6px
+            Text("个人访问令牌（Personal Access Token）", color = c.fg, fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.height(6.dp))
+            /*
+             * .tk-wrap：输入框内嵌眼睛按钮。Compose 的 OutlinedTextField 没有内嵌槽位，
+             * 用 trailingIcon 实现同样效果；网页版图标是眼睛，这里用文字「显示/隐藏」，
+             * 语义一致。
+             */
             OutlinedTextField(
                 value = tk, onValueChange = { tk = it.trim(); err = null },
                 singleLine = true,
+                textStyle = androidx.compose.ui.text.TextStyle(
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    fontSize = 13.sp, color = c.fg),
                 visualTransformation = if (show) VisualTransformation.None
                 else PasswordVisualTransformation(),
-                placeholder = { Text("ghp_xxxxxxxxxxxx 或 github_pat_xxxx", fontSize = 12.sp) },
+                placeholder = { Text("ghp_xxxxxxxxxxxx 或 github_pat_xxxx", fontSize = 13.sp) },
                 trailingIcon = {
                     TextButton(onClick = { show = !show }) {
-                        Text(if (show) "隐藏" else "显示", fontSize = 11.sp, color = c.accent)
+                        Text(if (show) "隐藏" else "显示", fontSize = 13.sp,
+                            color = if (show) c.accent else c.fgMuted)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
                 colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = c.bg, unfocusedContainerColor = c.bg,
                     focusedTextColor = c.fg, unfocusedTextColor = c.fg,
-                    cursorColor = c.accent, focusedBorderColor = c.accent,
+                    cursorColor = c.accent, focusedBorderColor = c.accentEmphasis,
                     unfocusedBorderColor = c.border
                 )
             )
+            // .field .hint font-size:12px; color var(--fg-muted); margin-top:6px
             Spacer(Modifier.height(6.dp))
             Text("令牌仅保存在本机加密存储中，不会上传任何服务器。",
-                color = c.fgSubtle, fontSize = 10.sp)
-            Spacer(Modifier.height(12.dp))
+                color = c.fgMuted, fontSize = 12.sp)
+
+            Spacer(Modifier.height(14.dp))
+            // .btn.primary.block.lg：min-height 44px; font-size 15px; padding 10/16
             Button(
                 onClick = {
                     if (tk.isBlank() || busy) return@Button
                     busy = true; err = null
                     MainScope().launch {
-                        SecurePrefs.put(ctx, GitHubApi.TOKEN_KEY, tk)
-                        val ok = try {
-                            withContext(Dispatchers.IO) { GitHubApi.me(ctx) } != null
-                        } catch (e: Throwable) { null } != false
+                        val r = withContext(Dispatchers.IO) {
+                            // 先存再验：验过了下次直接免输
+                            SecurePrefs.put(ctx, GitHubApi.TOKEN_KEY, tk)
+                            GitHubApi.meChecked(ctx)
+                        }
                         busy = false
-                        if (ok) onDone() else { err = "令牌无效或网络不可用" }
+                        when {
+                            r.user != null -> { err = null; onDone() }
+                            r.code == 401 -> err = "令牌无效或已过期，请重新创建"
+                            r.code == 403 -> err = "已被限流（无令牌时每小时 60 次），稍后再试"
+                            r.code == -1 -> err = "网络不可用，请检查连接"
+                            r.code == -2 -> err = "返回数据解析失败，稍后再试"
+                            else -> err = "登录失败（HTTP ${r.code}）"
+                        }
                     }
                 },
                 enabled = tk.isNotBlank() && !busy,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth().height(44.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = c.primary)
             ) {
-                Text(if (saved.isNotBlank()) "使用上次的令牌登录" else "登录", color = Color.White)
+                Text(if (saved.isNotBlank()) "使用上次的令牌登录" else "登录",
+                    color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium)
             }
+
+            // 有存档时才出现「忘记此令牌」，网页版是动态插在 create 按钮上方
             if (saved.isNotBlank()) {
-                Spacer(Modifier.height(8.dp))
-                TextButton(onClick = {
-                    SecurePrefs.put(ctx, GitHubApi.TOKEN_KEY, "")
-                    tk = ""
-                }, modifier = Modifier.fillMaxWidth()) {
-                    Text("忘记此令牌", color = c.danger, fontSize = 12.sp)
-                }
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = {
+                        SecurePrefs.put(ctx, GitHubApi.TOKEN_KEY, "")
+                        tk = ""; err = null
+                    },
+                    modifier = Modifier.fillMaxWidth().height(44.dp),
+                    shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = c.bgHi)
+                ) { Text("忘记此令牌", color = c.danger, fontSize = 14.sp) }
             }
+
             if (err != null) {
-                Spacer(Modifier.height(6.dp))
-                Text(err!!, color = c.danger, fontSize = 11.sp)
+                Spacer(Modifier.height(10.dp))
+                Text(err!!, color = c.danger, fontSize = 12.sp)
             }
-            Spacer(Modifier.height(8.dp))
+
+            Spacer(Modifier.height(12.dp))
             OutlinedButton(
                 onClick = { openWebStatic(ctx,
                     "https://github.com/settings/tokens/new?" +
                         "scopes=repo,read:user,workflow&description=githup") },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("在 GitHub 官网创建 Token", fontSize = 12.sp) }
+                modifier = Modifier.fillMaxWidth().height(44.dp),
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(6.dp)
+            ) {
+                Text("在 GitHub 官网创建 Token", fontSize = 14.sp)
+            }
         }
 
+        // .login-alt：text-align center; margin-top 16px; 两个按钮中间一个「·」
         Spacer(Modifier.height(16.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center) {
             TextButton(onClick = {
                 openWebStatic(ctx, "https://docs.github.com/" +
                     "zh/authentication/keeping-your-account-and-data-secure/" +
                     "managing-your-personal-access-tokens")
-            }) { Text("如何获取令牌？", fontSize = 11.sp, color = c.accent) }
+            }) { Text("如何获取令牌？", fontSize = 13.sp, color = c.accent) }
+            Text(" · ", color = c.fgSubtle, fontSize = 13.sp)
             TextButton(onClick = onSkip) {
-                Text("先随便看看", fontSize = 11.sp, color = c.fgMuted)
+                Text("先随便看看", fontSize = 13.sp, color = c.accent)
             }
         }
     }
 }
-
-/* ---------------- 我的页：对齐 P.profile ---------------- */
 
 @Composable
 fun ProfileScreen(
