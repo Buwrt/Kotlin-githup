@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -91,18 +92,21 @@ fun CenteredLoading(modifier: Modifier = Modifier) {
  * `IllegalStateException`（纵向可滚动组件被以无限最大高度约束测量）。
  * 表现是：列表刚渲染出来，App 就没了。
  *
- * 所以放进 LazyColumn 的 item 时必须传 fill = false（改用 fillMaxWidth + 上下留白）。
+ * 所以这里统一改用 fillMaxWidth + heightIn(min=200) —— 两种情况都安全。
  */
 @Composable
-fun CenteredText(
-    msg: String,
-    action: (@Composable () -> Unit)? = null,
-    fill: Boolean = true
-) {
+fun CenteredText(msg: String, action: (@Composable () -> Unit)? = null) {
     val c = LocalHubColors.current
+    /*
+     * 用 fillMaxWidth + heightIn(min=200) 而不是 fillMaxSize。
+     *
+     * fillMaxSize 在 LazyColumn 的 item 里会让高度变成无限 ——
+     * 而本组件大量用于 item{}（首页空态、用户页各 tab 空态…），
+     * 那样一渲染就崩。heightIn 只给最小值、不设上限，
+     * 在无限约束下取 200，在普通页面里照样撑开，两种情况都安全。
+     */
     Box(
-        if (fill) Modifier.fillMaxSize()
-        else Modifier.fillMaxWidth().padding(vertical = 36.dp),
+        Modifier.fillMaxWidth().heightIn(min = 200.dp).padding(vertical = 20.dp),
         Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -392,7 +396,7 @@ fun HomeScreen(
                 }
                 // 3) 仓库列表
                 if (repos.isEmpty()) {
-                    item { CenteredText("还没有仓库，点击「新建」创建第一个仓库", fill = false) }
+                    item { CenteredText("还没有仓库，点击「新建」创建第一个仓库") }
                 } else {
                     items(repos) { r ->
                         Box(Modifier.background(c.bg)) {
@@ -791,19 +795,19 @@ fun UserScreen(
                 }
                 when (tab) {
                     0, 4 -> item { EventsList(info.login, onOpenRepo, onOpenUser) }
-                    1 -> if (repos.isEmpty()) item { CenteredText("还没有公开仓库", fill = false) }
+                    1 -> if (repos.isEmpty()) item { CenteredText("还没有公开仓库") }
                     else items(repos) { r ->
                         Box(Modifier.background(c.bg)) {
                             RepoRow(r, { onOpenRepo(r.ownerLogin, r.name) })
                         }
                     }
-                    2 -> if (starred.isEmpty()) item { CenteredText("还没有 Star", fill = false) }
+                    2 -> if (starred.isEmpty()) item { CenteredText("还没有 Star") }
                     else items(starred) { r ->
                         Box(Modifier.background(c.bg)) {
                             RepoRow(r, { onOpenRepo(r.ownerLogin, r.name) })
                         }
                     }
-                    3 -> if (gists.isEmpty()) item { CenteredText("还没有 Gist", fill = false) }
+                    3 -> if (gists.isEmpty()) item { CenteredText("还没有 Gist") }
                     else items(gists) { g ->
                         Column(Modifier.fillMaxWidth().background(c.bg)
                             .clickable { onOpenWeb("https://gist.github.com/${g.id}") }
@@ -825,8 +829,7 @@ fun UserScreen(
                     else -> if (people.isEmpty()) item {
                         CenteredText(
                             if (tab == 5) "还没有粉丝"
-                            else if (tab == 6) "还没有关注任何人" else "还没有加入组织",
-                            fill = false)
+                            else if (tab == 6) "还没有关注任何人" else "还没有加入组织")
                     } else items(people) { pu ->
                         Box(Modifier.background(c.bg)) { UserRow(pu) { onOpenUser(pu.login) } }
                     }
