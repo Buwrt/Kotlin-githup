@@ -124,20 +124,26 @@ android {
     }
 
     /*
-     * Compose 编译器版本必须和 Kotlin 版本严格对得上，否则直接编译失败：
-     *   Kotlin 1.9.20 → Compose Compiler 1.5.4
-     *   Kotlin 1.9.24 → Compose Compiler 1.5.8   ← 本项目
+     * Compose 编译器版本必须和 Kotlin 版本严格对得上，否则直接编译失败。
+     * 官方 release notes 里逐个标注 "targeting Kotlin x.y.z"：
+     *   1.5.4  → Kotlin 1.9.20
+     *   1.5.8  → Kotlin 1.9.22
+     *   1.5.12 → Kotlin 1.9.23
+     *   1.5.14 → Kotlin 1.9.24   ← 本项目
+     *   1.5.15 → Kotlin 1.9.25
      *
-     * 这里踩过一次：先写的 1.5.4，CI 报
-     *   "This version (1.5.4) of the Compose Compiler requires Kotlin 1.9.20
-     *    but you appear to be using Kotlin 1.9.24"
-     * 同属 1.9.x 也不行 —— 编译器是按小版本逐个对齐的，不能想当然。
-     * 兼容对照表：developer.android.com/jetpack/androidx/releases/compose-kotlin
+     * 这里连踩两次坑：先写 1.5.4（报 requires 1.9.20），再写 1.5.8（报 requires
+     * 1.9.22）。同属 1.9.x 也不行 —— 按小版本逐个对齐，不能想当然。
+     * 对照表：developer.android.com/jetpack/androidx/releases/compose-kotlin
      *
-     * 哪天升到 Kotlin 2.0，编译器版本要一起升（且 AGP 需先到 8.2+）。
+     * 注意别用 suppressKotlinVersionCompatibilityCheck 去压这个报错：
+     * 编译器是 Kotlin 编译器插件，版本错配可能生成非法字节码，属于运行时炸。
+     *
+     * 哪天升到 Kotlin 2.0，编译器要改成 org.jetbrains.kotlin.plugin.compose
+     * 插件形式（版本号跟 Kotlin 走），且 AGP 需先到 8.2+。
      */
     composeOptions {
-        kotlinCompilerExtensionVersion '1.5.8'
+        kotlinCompilerExtensionVersion '1.5.14'
     }
 }
 
