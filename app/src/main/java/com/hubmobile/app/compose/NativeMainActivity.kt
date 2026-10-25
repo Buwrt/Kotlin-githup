@@ -112,12 +112,14 @@ private fun AppRoot(
     }
     var repo by remember { mutableStateOf(initialRepo) }
     var user by remember { mutableStateOf<String?>(null) }
+    var userTab by remember { mutableStateOf("overview") }
     var file by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var settings by remember { mutableStateOf(false) }
     var login by remember { mutableStateOf(false) }
     var totp by remember { mutableStateOf(false) }
     var downloads by remember { mutableStateOf(false) }
     var newRepo by remember { mutableStateOf(false) }
+    var editProfile by remember { mutableStateOf(false) }
     var newRelease by remember { mutableStateOf<Pair<String, String>?>(null) }
     var detail by remember { mutableStateOf<Triple<String, String, Int>?>(null) } // owner/name/number
     var detailIsPr by remember { mutableStateOf(false) }
@@ -149,7 +151,8 @@ private fun AppRoot(
     }
 
     val inSub = repo != null || user != null || file != null || settings ||
-        login || totp || downloads || newRepo || newRelease != null || detail != null
+        login || totp || downloads || newRepo || newRelease != null ||
+        detail != null || editProfile
 
     Scaffold(
         topBar = {
@@ -172,6 +175,7 @@ private fun AppRoot(
                         TextButton(onClick = {
                             when {
                                 detail != null -> detail = null
+                                editProfile -> editProfile = false
                                 file != null -> file = null
                                 newRelease != null -> newRelease = null
                                 newRepo -> newRepo = false
@@ -180,7 +184,7 @@ private fun AppRoot(
                                 login -> login = false
                                 settings -> settings = false
                                 repo != null -> repo = null
-                                user != null -> user = null
+                                user != null -> { user = null; userTab = "overview" }
                             }
                         }) {
                             Text("‹", fontSize = 26.sp, fontWeight = FontWeight.Light,
@@ -196,6 +200,7 @@ private fun AppRoot(
                             totp -> "两步验证器"
                             downloads -> "下载管理"
                             newRepo -> "新建仓库"
+                            editProfile -> "编辑资料"
                             newRelease != null -> "创建 Release"
                             detail != null -> "#${detail!!.third}"
                             repo != null -> repo!!.let { "${it.first}/${it.second}" }
@@ -264,7 +269,7 @@ private fun AppRoot(
                     settings -> SettingsScreen(
                         onOpenWeb = { openWeb(ctx, it) },
                         onLogout = { settings = false; tab = Tab.Home },
-                        onRestart = { }
+                        onThemeChange = { v -> onThemeChange(v) }
                     )
                     login -> LoginScreen(
                         onDone = { login = false; tab = Tab.Home },
@@ -272,6 +277,10 @@ private fun AppRoot(
                     )
                     totp -> TotpScreen(onBack = { totp = false })
                     downloads -> DownloadsScreen(onBack = { downloads = false })
+                    editProfile -> EditProfileScreen(
+                        onBack = { editProfile = false },
+                        onSaved = { editProfile = false; tab = Tab.Profile }
+                    )
                     newRepo -> NewRepoScreen(
                         onBack = { newRepo = false },
                         onCreated = { full ->
@@ -318,7 +327,8 @@ private fun AppRoot(
                         login = user!!,
                         onOpenRepo = { o, n -> repo = o to n },
                         onOpenUser = { user = it },
-                        onOpenWeb = { openWeb(ctx, it) }
+                        onOpenWeb = { openWeb(ctx, it) },
+                        initialTab = userTab
                     )
                     tab == Tab.Home -> HomeScreen(
                         onOpenRepo = { o, n -> repo = o to n },
@@ -328,7 +338,9 @@ private fun AppRoot(
                         onQuick = { key ->
                             val lg = meLogin(ctx)
                             when (key) {
-                                "repos", "stars" -> if (lg.isNotBlank()) user = lg
+                                "repos", "stars" -> if (lg.isNotBlank()) {
+                                    userTab = key; user = lg
+                                }
                                 "issues" -> openWeb(ctx, "https://github.com/issues")
                                 "pulls" -> openWeb(ctx, "https://github.com/pulls")
                                 "gists" -> openWeb(ctx, "https://gist.github.com/$lg")
@@ -364,7 +376,9 @@ private fun AppRoot(
                         onLogin = { login = true },
                         onTotp = { totp = true },
                         onNewRepo = { newRepo = true },
-                        onDownloads = { downloads = true }
+                        onDownloads = { downloads = true },
+                        onEditProfile = { editProfile = true },
+                        onOpenUserTab = { l, t -> userTab = t; user = l }
                     )
                 }
             }

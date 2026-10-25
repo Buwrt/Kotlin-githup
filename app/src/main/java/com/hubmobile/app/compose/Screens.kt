@@ -661,7 +661,9 @@ fun UserScreen(
     login: String,
     onOpenRepo: (String, String) -> Unit,
     onOpenUser: (String) -> Unit,
-    onOpenWeb: (String) -> Unit = {}
+    onOpenWeb: (String) -> Unit = {},
+    /** 直接落在指定 tab：overview/repos/stars/gists/activity/followers/following/orgs */
+    initialTab: String = "overview"
 ) {
     val ctx = LocalContext.current
     val c = LocalHubColors.current
@@ -670,7 +672,12 @@ fun UserScreen(
      *   概览 / 仓库 / Star / Gist / 动态 / 粉丝 / 关注 / 组织
      */
     val tabs = listOf("概览", "仓库", "Star", "Gist", "动态", "粉丝", "关注", "组织")
-    var tab by remember { mutableStateOf(0) }
+    var tab by remember {
+        mutableStateOf(
+            listOf("overview", "repos", "stars", "gists", "activity",
+                "followers", "following", "orgs").indexOf(initialTab).coerceAtLeast(0)
+        )
+    }
     var u by remember { mutableStateOf<GitHubApi.UserInfo?>(null) }
     var avatar by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
     var repos by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
@@ -697,7 +704,7 @@ fun UserScreen(
     }
 
     // 切到需要额外请求的 tab 时才去取，避免首屏一次打 8 个接口
-    LaunchedEffect(login, tab) {
+    LaunchedEffect(login, tab, u != null) {
         val info = u ?: return@LaunchedEffect
         try {
             when (tab) {
@@ -811,7 +818,8 @@ fun UserScreen(
 fun SettingsScreen(
     onOpenWeb: (String) -> Unit = {},
     onLogout: () -> Unit = {},
-    onRestart: () -> Unit = {}
+    /** 主题改了必须回调它 —— 否则只有 Activity 的 theme 状态没变，界面不会重绘 */
+    onThemeChange: (String) -> Unit = {}
 ) {
     val ctx = LocalContext.current
     val c = LocalHubColors.current
@@ -954,7 +962,10 @@ fun SettingsScreen(
                 Column {
                     listOf("auto" to "跟随系统", "light" to "浅色", "dark" to "深色").forEach { (k, label) ->
                         Row(Modifier.fillMaxWidth().clickable {
-                            theme = k; Prefs.setTheme(ctx, k); showTheme = false; onRestart()
+                            theme = k
+                            Prefs.setTheme(ctx, k)
+                            showTheme = false
+                            onThemeChange(k)      // ← 少了这行就是"下次打开才生效"
                         }.padding(vertical = 12.dp)) {
                             Text(label, color = c.fg, fontSize = 13.sp,
                                 modifier = Modifier.weight(1f))

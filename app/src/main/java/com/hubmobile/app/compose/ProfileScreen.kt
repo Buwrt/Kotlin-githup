@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Divider
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -226,7 +227,10 @@ fun ProfileScreen(
     onLogin: () -> Unit = {},
     onTotp: () -> Unit = {},
     onNewRepo: () -> Unit = {},
-    onDownloads: () -> Unit = {}
+    onDownloads: () -> Unit = {},
+    onEditProfile: () -> Unit = {},
+    /** 打开用户页并落在指定 tab：repos / followers / following / stars */
+    onOpenUserTab: (String, String) -> Unit = { l, _ -> onOpenUser(l) }
 ) {
     val ctx = LocalContext.current
     val c = LocalHubColors.current
@@ -315,12 +319,19 @@ fun ProfileScreen(
                         Spacer(Modifier.height(14.dp))
                         Row(Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.SpaceEvenly) {
-                            StatCell(GitHubApi.num(u.publicRepos), "仓库") { onOpenUser(u.login) }
-                            StatCell(GitHubApi.num(u.followers), "粉丝") { onOpenUser(u.login) }
-                            StatCell(GitHubApi.num(u.following), "关注") { onOpenUser(u.login) }
-                            StatCell(starCount?.let { GitHubApi.num(it) } ?: "—",
-                                "Star") { onOpenUser(u.login) }
-                            StatCell("—", "Gist") {
+                            StatCell(GitHubApi.num(u.publicRepos), "仓库") {
+                                onOpenUserTab(u.login, "repos")
+                            }
+                            StatCell(GitHubApi.num(u.followers), "粉丝") {
+                                onOpenUserTab(u.login, "followers")
+                            }
+                            StatCell(GitHubApi.num(u.following), "关注") {
+                                onOpenUserTab(u.login, "following")
+                            }
+                            StatCell(starCount?.let { GitHubApi.num(it) } ?: "—", "Star") {
+                                onOpenUserTab(u.login, "stars")
+                            }
+                            StatCell(GitHubApi.num(u.publicGists), "Gist") {
                                 onOpenWeb("https://gist.github.com/${u.login}")
                             }
                         }
@@ -329,7 +340,7 @@ fun ProfileScreen(
                 // 编辑资料 / 更换头像 / 新建仓库
                 item {
                     SetRowItem("person", "编辑资料", if (u.name.isBlank()) "未设置" else "") {
-                        onOpenWeb("https://github.com/settings/profile")
+                        onEditProfile()
                     }
                     SetRowItem("person", "更换头像", "需网页端") {
                         onOpenWeb("https://github.com/settings/profile")
@@ -339,8 +350,8 @@ fun ProfileScreen(
                 item { SectionTitle("") }
                 item {
                     SetRowItem("shield-check", "两步验证器", "") { onTotp() }
-                    SetRowItem("repo", "我的仓库", "") { onOpenUser(u.login) }
-                    SetRowItem("star", "我的 Star", "") { onOpenUser(u.login) }
+                    SetRowItem("repo", "我的仓库", "") { onOpenUserTab(u.login, "repos") }
+                    SetRowItem("star", "我的 Star", "") { onOpenUserTab(u.login, "stars") }
                     SetRowItem("issue", "我的议题", "") {
                         onOpenWeb("https://github.com/issues")
                     }
@@ -407,4 +418,164 @@ fun SetRowItem(
         HubIcon("chevron-right", Modifier.size(14.dp), c.fgSubtle)
     }
     Divider(color = c.borderMuted, thickness = 0.5.dp)
+}
+
+/* ---------------- 编辑资料：对齐 page-user.js 的 editProfile ---------------- */
+
+private val SOCIAL_PROVIDERS = listOf(
+    "twitter" to "X / Twitter", "mastodon" to "Mastodon",
+    "linkedin" to "LinkedIn", "zhihu" to "知乎", "bilibili" to "哔哩哔哩"
+)
+
+@Composable
+fun EditProfileScreen(onBack: () -> Unit, onSaved: () -> Unit) {
+    val ctx = LocalContext.current
+    val c = LocalHubColors.current
+    var u by remember { mutableStateOf<GitHubApi.UserInfo?>(null) }
+    var name by remember { mutableStateOf("") }
+    var bio by remember { mutableStateOf("") }
+    var company by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf("") }
+    var blog by remember { mutableStateOf("") }
+    var hireable by remember { mutableStateOf(false) }
+    var social by remember { mutableStateOf(mapOf<String, String>()) }
+    var busy by remember { mutableStateOf(false) }
+    var err by remember { mutableStateOf<String?>(null) }
+    var loaded by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        val info = try {
+            withContext(Dispatchers.IO) { GitHubApi.me(ctx) }
+        } catch (e: Throwable) { null }
+        if (info != null) {
+            u = info
+            name = info.name; bio = info.bio
+            company = info.company; location = info.location; blog = info.blog
+            hireable = info.hireable
+            social = info.social
+        }
+        loaded = true
+    }
+
+    if (!loaded) { SkeletonList(3); return }
+
+    LazyColumn(Modifier.fillMaxSize().background(c.canvas),
+        contentPadding = PaddingValues(bottom = 24.dp)) {
+        // 头像区：展示 + 去网页端修改（GitHub 没开放头像上传接口）
+        item {
+            Row(Modifier.fillMaxWidth().background(c.bg).padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Avatar(null, 56)
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text("头像", color = c.fg, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Text("GitHub 未开放头像上传接口，需在网页端修改。",
+                        color = c.fgSubtle, fontSize = 10.sp)
+                }
+                OutlinedButton(onClick = {
+                    openWebStatic(ctx, "https://github.com/settings/profile")
+                }, modifier = Modifier.height(28.dp),
+                    contentPadding = PaddingValues(horizontal = 8.dp)) {
+                    Text("去修改", fontSize = 11.sp)
+                }
+            }
+        }
+        item { FormField("昵称", name, { name = it }, "显示名称") }
+        item { FormArea("简介", bio, { bio = it }, "一句话介绍自己") }
+        item { FormField("公司", company, { company = it }, "@company") }
+        item { FormField("地区", location, { location = it }, "城市") }
+        item { FormField("博客", blog, { blog = it }, "https://") }
+
+        item { SectionTitle("社交账号") }
+        items(SOCIAL_PROVIDERS) { (k, label) ->
+            FormField(label, social[k] ?: "", { v ->
+                social = social.toMutableMap().apply { put(k, v) }
+            }, "")
+        }
+
+        item { SectionTitle("其他") }
+        item {
+            CheckRow("愿意接受工作机会（显示「可雇佣」标记）", hireable) { hireable = it }
+        }
+        item {
+            Text("头像与用户名暂不支持在应用内修改，GitHub 未开放对应接口。",
+                color = c.fgSubtle, fontSize = 10.sp,
+                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp))
+        }
+        item {
+            if (err != null) {
+                Text(err!!, color = c.danger, fontSize = 12.sp,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
+            }
+            Row(Modifier.fillMaxWidth().padding(14.dp)) {
+                OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f)) {
+                    Text("取消")
+                }
+                Spacer(Modifier.width(10.dp))
+                Button(onClick = {
+                    if (busy) return@Button
+                    busy = true; err = null
+                    MainScope().launch {
+                        val ok = try {
+                            withContext(Dispatchers.IO) {
+                                GitHubApi.updateProfile(ctx, name, bio, blog, company,
+                                    location, hireable, social)
+                            }
+                        } catch (e: Throwable) { false }
+                        busy = false
+                        if (ok) onSaved() else err = "保存失败（令牌需要 user 权限）"
+                    }
+                }, enabled = !busy, modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.buttonColors(containerColor = c.primary)) {
+                    Text(if (busy) "保存中…" else "保存", color = Color.White)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FormField(label: String, value: String, on: (String) -> Unit, hint: String) {
+    val c = LocalHubColors.current
+    Column(Modifier.fillMaxWidth().background(c.bg)
+        .padding(horizontal = 14.dp, vertical = 7.dp)) {
+        Text(label, color = c.fgMuted, fontSize = 12.sp)
+        Spacer(Modifier.height(4.dp))
+        OutlinedTextField(value = value, onValueChange = on, singleLine = true,
+            placeholder = { Text(hint, fontSize = 12.sp) },
+            modifier = Modifier.fillMaxWidth(),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = c.fg, unfocusedTextColor = c.fg,
+                cursorColor = c.accent, focusedBorderColor = c.accent,
+                unfocusedBorderColor = c.border))
+    }
+}
+
+@Composable
+private fun FormArea(label: String, value: String, on: (String) -> Unit, hint: String) {
+    val c = LocalHubColors.current
+    Column(Modifier.fillMaxWidth().background(c.bg)
+        .padding(horizontal = 14.dp, vertical = 7.dp)) {
+        Text(label, color = c.fgMuted, fontSize = 12.sp)
+        Spacer(Modifier.height(4.dp))
+        OutlinedTextField(value = value, onValueChange = on,
+            placeholder = { Text(hint, fontSize = 12.sp) },
+            modifier = Modifier.fillMaxWidth().height(90.dp), maxLines = 3,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = c.fg, unfocusedTextColor = c.fg,
+                cursorColor = c.accent, focusedBorderColor = c.accent,
+                unfocusedBorderColor = c.border))
+    }
+}
+
+@Composable
+private fun CheckRow(text: String, on: Boolean, onCh: (Boolean) -> Unit) {
+    val c = LocalHubColors.current
+    Row(Modifier.fillMaxWidth().background(c.bg).clickable { onCh(!on) }
+        .padding(horizontal = 14.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        androidx.compose.material3.Checkbox(checked = on, onCheckedChange = onCh)
+        Spacer(Modifier.width(10.dp))
+        Text(text, color = c.fg, fontSize = 12.sp)
+    }
 }

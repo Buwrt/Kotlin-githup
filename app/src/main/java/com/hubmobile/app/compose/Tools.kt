@@ -2,6 +2,7 @@ package com.hubmobile.app.compose
 
 import android.content.Context
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -293,8 +294,19 @@ fun NewRepoScreen(onBack: () -> Unit, onCreated: (String) -> Unit) {
     var desc by remember { mutableStateOf("") }
     var priv by remember { mutableStateOf(false) }
     var init by remember { mutableStateOf(true) }
+    var gi by remember { mutableStateOf("") }
+    var lic by remember { mutableStateOf("") }
     var busy by remember { mutableStateOf(false) }
     var err by remember { mutableStateOf<String?>(null) }
+    // 对齐 page-repo.js newRepo() 的两份清单
+    val gitignores = listOf("" to "无", "Node" to "Node", "Python" to "Python",
+        "Java" to "Java", "Android" to "Android", "Gradle" to "Gradle",
+        "C++" to "C++", "Go" to "Go", "Rust" to "Rust", "Swift" to "Swift")
+    val licenses = listOf("" to "无", "mit" to "MIT License",
+        "apache-2.0" to "Apache License 2.0", "gpl-3.0" to "GNU GPLv3",
+        "agpl-3.0" to "GNU AGPLv3", "lgpl-3.0" to "GNU LGPLv3",
+        "mpl-2.0" to "Mozilla Public License 2.0", "bsd-3-clause" to "BSD 3-Clause",
+        "unlicense" to "The Unlicense")
 
     Column(Modifier.fillMaxSize().background(c.canvas).padding(16.dp)) {
         Text("新建仓库", color = c.fg, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
@@ -305,6 +317,10 @@ fun NewRepoScreen(onBack: () -> Unit, onCreated: (String) -> Unit) {
         Spacer(Modifier.height(12.dp))
         SwitchRow("私有仓库", "只有你自己和协作者能看到", priv) { priv = it }
         SwitchRow("初始化 README", "勾上就能立刻 clone", init) { init = it }
+        Spacer(Modifier.height(8.dp))
+        PickerField(".gitignore 模板", gi, gitignores) { gi = it }
+        Spacer(Modifier.height(8.dp))
+        PickerField("开源许可证", lic, licenses) { lic = it }
         Spacer(Modifier.height(10.dp))
         // 克隆地址实时预览（网页版表单就有这个）
         if (name.isNotBlank()) {
@@ -319,7 +335,7 @@ fun NewRepoScreen(onBack: () -> Unit, onCreated: (String) -> Unit) {
             MainScope().launch {
                 val r = try {
                     withContext(Dispatchers.IO) {
-                        GitHubApi.createRepo(ctx, name.trim(), desc.trim(), priv, init)
+                        GitHubApi.createRepo(ctx, name.trim(), desc.trim(), priv, init, gi, lic)
                     }
                 } catch (e: Throwable) { null }
                 busy = false
@@ -492,5 +508,45 @@ private fun SwitchRow(title: String, sub: String, on: Boolean, onCh: (Boolean) -
         Switch(checked = on, onCheckedChange = onCh,
             colors = SwitchDefaults.colors(checkedThumbColor = c.accent,
                 checkedTrackColor = c.accentSubtle))
+    }
+}
+
+@Composable
+private fun PickerField(
+    label: String, cur: String, options: List<Pair<String, String>>, on: (String) -> Unit
+) {
+    val c = LocalHubColors.current
+    var open by remember { mutableStateOf(false) }
+    Column {
+        Text(label, color = c.fgSubtle, fontSize = 11.sp)
+        Spacer(Modifier.height(4.dp))
+        Box(Modifier.fillMaxWidth()
+            .background(c.bg, androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+            .border(1.dp, c.border, androidx.compose.foundation.shape.RoundedCornerShape(6.dp))
+            .clickable { open = true }
+            .padding(horizontal = 12.dp, vertical = 12.dp)) {
+            Text(options.firstOrNull { it.first == cur }?.second ?: "无",
+                color = c.fg, fontSize = 13.sp)
+        }
+    }
+    if (open) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { open = false },
+            title = { Text(label, fontSize = 15.sp) },
+            text = {
+                androidx.compose.foundation.lazy.LazyColumn {
+                    items(options) { (v, t) ->
+                        Row(Modifier.fillMaxWidth().clickable {
+                            on(v); open = false
+                        }.padding(vertical = 12.dp)) {
+                            Text(t, color = c.fg, fontSize = 13.sp,
+                                modifier = Modifier.weight(1f))
+                            if (cur == v) Text("✓", color = c.accent, fontSize = 13.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
     }
 }

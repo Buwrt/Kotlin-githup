@@ -199,19 +199,43 @@ object GitHubApi {
         val publicRepos: Int,
         val followers: Int,
         val following: Int,
-        val htmlUrl: String
+        val htmlUrl: String,
+        /* 编辑资料要用的字段（对齐 page-user.js 的 editProfile 表单） */
+        val company: String = "",
+        val location: String = "",
+        val blog: String = "",
+        val email: String = "",
+        val hireable: Boolean = false,
+        val publicGists: Int = 0,
+        val social: Map<String, String> = emptyMap()
     ) {
         companion object {
-            fun from(o: JSONObject): UserInfo = UserInfo(
-                login = o.safe("login"),
-                name = o.safe("name"),
-                avatarUrl = o.safe("avatar_url"),
-                bio = o.safe("bio"),
-                publicRepos = o.optInt("public_repos"),
-                followers = o.optInt("followers"),
-                following = o.optInt("following"),
-                htmlUrl = o.safe("html_url")
-            )
+            fun from(o: JSONObject): UserInfo {
+                val soc = HashMap<String, String>()
+                val sa = o.optJSONArray("social_accounts")
+                if (sa != null) for (i in 0 until sa.length()) {
+                    val it = sa.optJSONObject(i) ?: continue
+                    val pv = it.safe("provider")
+                    if (pv.isNotBlank()) soc[pv] = it.safe("url")
+                }
+                return UserInfo(
+                    login = o.safe("login"),
+                    name = o.safe("name"),
+                    avatarUrl = o.safe("avatar_url"),
+                    bio = o.safe("bio"),
+                    publicRepos = o.optInt("public_repos"),
+                    followers = o.optInt("followers"),
+                    following = o.optInt("following"),
+                    htmlUrl = o.safe("html_url"),
+                    company = o.safe("company"),
+                    location = o.safe("location"),
+                    blog = o.safe("blog"),
+                    email = o.safe("email"),
+                    hireable = o.optBoolean("hireable"),
+                    publicGists = o.optInt("public_gists"),
+                    social = soc
+                )
+            }
         }
     }
 
@@ -867,13 +891,16 @@ object GitHubApi {
     /** 新建仓库。返回 full_name */
     fun createRepo(
         ctx: Context, name: String, description: String,
-        private: Boolean, autoInit: Boolean
+        private: Boolean, autoInit: Boolean,
+        gitignore: String = "", license: String = ""
     ): RepoInfo {
         val b = JSONObject()
             .put("name", name)
             .put("description", description)
             .put("private", private)
             .put("auto_init", autoInit)
+        if (gitignore.isNotBlank()) b.put("gitignore_template", gitignore)
+        if (license.isNotBlank()) b.put("license_template", license)
         val s = write("POST", "$API/user/repos", b.toString(), ctx)
         return RepoInfo.from(JSONObject(s))
     }
@@ -945,17 +972,29 @@ object GitHubApi {
 
     /* ---------- 个人资料编辑 ---------- */
 
-    /** PATCH /user —— 改 name / bio / blog / company / location */
+    /**
+     * PATCH /user —— 对齐 page-user.js editProfile 提交的那份 payload。
+     * 空串要传 null（GitHub 用 null 表示"清空"，空串会留下空值）。
+     */
     fun updateProfile(
-        ctx: Context, name: String?, bio: String?, blog: String?,
-        company: String?, location: String?
+        ctx: Context,
+        name: String?, bio: String?, blog: String?,
+        company: String?, location: String?,
+        hireable: Boolean,
+        social: Map<String, String>
     ): Boolean {
         val b = JSONObject()
-        if (name != null) b.put("name", name)
-        if (bio != null) b.put("bio", bio)
-        if (blog != null) b.put("blog", blog)
-        if (company != null) b.put("company", company)
-        if (location != null) b.put("location", location)
+        b.put("name", if (name.isNullOrBlank()) null else name)
+        b.put("bio", if (bio.isNullOrBlank()) null else bio)
+        b.put("blog", if (blog.isNullOrBlank()) null else blog)
+        b.put("company", if (company.isNullOrBlank()) null else company)
+        b.put("location", if (location.isNullOrBlank()) null else location)
+        b.put("hireable", hireable)
+        val arr = org.json.JSONArray()
+        social.forEach { (k, v) ->
+            if (v.isNotBlank()) arr.put(JSONObject().put("provider", k).put("url", v))
+        }
+        b.put("social_accounts", arr)
         write("PATCH", "$API/user", b.toString(), ctx)
         return true
     }
