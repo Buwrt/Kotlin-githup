@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -312,7 +313,7 @@ fun ProfileScreen(
                 }
                 item { SectionTitle("我的仓库", icon = "repo") }
                 if (repos.isEmpty()) item { CenteredText("还没有仓库") }
-                else items(items = repos.take(20), key = { it.fullName }) { r ->
+                else items(repos.take(20)) { r ->
                     Box(Modifier.background(c.bg)) {
                         RepoRow(r, { onOpenRepo(r.ownerLogin, r.name) })
                     }

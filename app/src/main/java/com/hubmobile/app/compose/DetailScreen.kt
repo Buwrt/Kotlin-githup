@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -161,7 +162,7 @@ fun IssueDetailScreen(
                             Text("还没有评论", color = c.fgSubtle, fontSize = 12.sp)
                         } }
                     } else {
-                        items(items = cs, key = { it.id }) { cm ->
+                        items(cs) { cm ->
                             Column(Modifier.fillMaxWidth().background(c.bg)
                                 .padding(horizontal = 14.dp, vertical = 11.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
