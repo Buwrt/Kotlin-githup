@@ -52,18 +52,18 @@ data class RepoInfo(
                 }
             }
             return RepoInfo(
-                fullName = o.optString("full_name"),
-                ownerLogin = owner?.optString("login") ?: "",
-                ownerAvatarUrl = owner?.optString("avatar_url") ?: "",
-                description = o.optString("description"),
+                fullName = o.safe("full_name"),
+                ownerLogin = owner?.safe("login") ?: "",
+                ownerAvatarUrl = owner?.safe("avatar_url") ?: "",
+                description = o.safe("description"),
                 stars = o.optInt("stargazers_count"),
                 forks = o.optInt("forks_count"),
                 watchers = o.optInt("subscribers_count"),
                 openIssues = o.optInt("open_issues_count"),
-                language = o.optString("language"),
-                license = lic?.optString("spdx_id") ?: "",
-                defaultBranch = o.optString("default_branch"),
-                updatedAt = o.optString("updated_at"),
+                language = o.safe("language"),
+                license = lic?.safe("spdx_id") ?: "",
+                defaultBranch = o.safe("default_branch"),
+                updatedAt = o.safe("updated_at"),
                 private = o.optBoolean("private"),
                 topics = topics
             )
@@ -81,6 +81,18 @@ data class ContentEntry(
 
 /** 请求失败时抛出：把 HTTP 状态码带给 UI，好区分 404 / 403 / 限流。 */
 class ApiError(val code: Int, msg: String) : Exception(msg)
+
+/*
+ * org.json 的坑：optString() 在字段值是 JSON null 时，
+ * 部分实现会返回字符串 "null" 而不是空串 —— 直接画到屏幕上就会显示 "null"。
+ * 实测 GitHub API 对「没填描述」「没设语言」的仓库正是返回 null，
+ * 首页因此出现了一批 "null"。统一走这个函数，把 null / 字面量 "null" 都收成空串。
+ */
+private fun JSONObject.safe(key: String): String {
+    if (isNull(key)) return ""
+    val v = optString(key, "")
+    return if (v.isBlank() || "null".equals(v, ignoreCase = true)) "" else v
+}
 
 object GitHubApi {
 
@@ -139,11 +151,11 @@ object GitHubApi {
             val o = arr.getJSONObject(i)
             out.add(
                 ContentEntry(
-                    name = o.optString("name"),
-                    path = o.optString("path"),
-                    isDir = "dir" == o.optString("type"),
+                    name = o.safe("name"),
+                    path = o.safe("path"),
+                    isDir = "dir" == o.safe("type"),
                     size = o.optLong("size"),
-                    sha = o.optString("sha")
+                    sha = o.safe("sha")
                 )
             )
         }
@@ -180,14 +192,14 @@ object GitHubApi {
     ) {
         companion object {
             fun from(o: JSONObject): UserInfo = UserInfo(
-                login = o.optString("login"),
-                name = o.optString("name"),
-                avatarUrl = o.optString("avatar_url"),
-                bio = o.optString("bio"),
+                login = o.safe("login"),
+                name = o.safe("name"),
+                avatarUrl = o.safe("avatar_url"),
+                bio = o.safe("bio"),
                 publicRepos = o.optInt("public_repos"),
                 followers = o.optInt("followers"),
                 following = o.optInt("following"),
-                htmlUrl = o.optString("html_url")
+                htmlUrl = o.safe("html_url")
             )
         }
     }
@@ -273,8 +285,8 @@ object GitHubApi {
             } catch (e: Throwable) { null }
         } else null
         return FileContent(
-            name = o.optString("name"),
-            path = o.optString("path"),
+            name = o.safe("name"),
+            path = o.safe("path"),
             size = size,
             text = text,
             isBinary = text == null
@@ -297,15 +309,15 @@ object GitHubApi {
                 val arr = o.optJSONArray("labels")
                 val ls = ArrayList<String>()
                 if (arr != null) for (i in 0 until arr.length()) {
-                    arr.optJSONObject(i)?.optString("name")?.let { if (it.isNotEmpty()) ls.add(it) }
+                    arr.optJSONObject(i)?.safe("name")?.let { if (it.isNotEmpty()) ls.add(it) }
                 }
                 return IssueInfo(
                     number = o.optInt("number"),
-                    title = o.optString("title"),
-                    state = o.optString("state"),
-                    user = o.optJSONObject("user")?.optString("login") ?: "",
+                    title = o.safe("title"),
+                    state = o.safe("state"),
+                    user = o.optJSONObject("user")?.safe("login") ?: "",
                     comments = o.optInt("comments"),
-                    createdAt = o.optString("created_at"),
+                    createdAt = o.safe("created_at"),
                     labels = ls
                 )
             }

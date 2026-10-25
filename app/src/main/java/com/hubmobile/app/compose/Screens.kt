@@ -217,7 +217,15 @@ fun HomeScreen(
                 } else {
                     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
                         items(list) { r ->
-                            RepoRow(r, null, { onOpenRepo(r.ownerLogin, r.name) },
+                            // 头像异步加载并缓存：同一 owner 只取一次
+                            var bmp by remember(r.ownerAvatarUrl) { mutableStateOf<Bitmap?>(null) }
+                            LaunchedEffect(r.ownerAvatarUrl) {
+                                if (r.ownerAvatarUrl.isBlank()) return@LaunchedEffect
+                                bmp = withContext(Dispatchers.IO) {
+                                    GitHubApi.loadBitmap(ctx, r.ownerAvatarUrl + "&s=40")
+                                }
+                            }
+                            RepoRow(r, bmp, { onOpenRepo(r.ownerLogin, r.name) },
                                 { onOpenUser(r.ownerLogin) })
                         }
                     }
@@ -282,7 +290,14 @@ fun SearchScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
                 LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
                     items(res.items) { r ->
-                        RepoRow(r, null, { onOpenRepo(r.ownerLogin, r.name) },
+                        var bmp by remember(r.ownerAvatarUrl) { mutableStateOf<Bitmap?>(null) }
+                        LaunchedEffect(r.ownerAvatarUrl) {
+                            if (r.ownerAvatarUrl.isBlank()) return@LaunchedEffect
+                            bmp = withContext(Dispatchers.IO) {
+                                GitHubApi.loadBitmap(ctx, r.ownerAvatarUrl + "&s=40")
+                            }
+                        }
+                        RepoRow(r, bmp, { onOpenRepo(r.ownerLogin, r.name) },
                             { onOpenUser(r.ownerLogin) })
                     }
                 }
