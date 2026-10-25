@@ -47,6 +47,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hubmobile.app.SecurePrefs
@@ -559,6 +561,7 @@ private fun NotifRow(n: GitHubApi.NotifInfo, onClick: () -> Unit) {
 
 /* ---------------- 搜索 ---------------- */
 
+@Composable
 fun SearchScreen(
     onOpenRepo: (String, String) -> Unit,
     onOpenUser: (String) -> Unit,
@@ -653,6 +656,7 @@ fun SearchScreen(
 }
 
 
+@Composable
 fun ProfileScreen(
     onOpenRepo: (String, String) -> Unit,
     onOpenUser: (String) -> Unit,
@@ -788,6 +792,158 @@ fun ProfileScreen(
 }
 
 
+@Composable
+fun UserScreen(
+    login: String,
+    onOpenRepo: (String, String) -> Unit,
+    onOpenUser: (String) -> Unit,
+    onOpenWeb: (String) -> Unit = {}
+) {
+    val ctx = LocalContext.current
+    val c = LocalHubColors.current
+    /*
+     * tab 对齐 page-user.js 顶部那排：
+     *   概览 / 仓库 / Star / Gist / 动态 / 粉丝 / 关注 / 组织
+     */
+    val tabs = listOf("概览", "仓库", "Star", "Gist", "动态", "粉丝", "关注", "组织")
+    var tab by remember { mutableStateOf(0) }
+    var u by remember { mutableStateOf<GitHubApi.UserInfo?>(null) }
+    var avatar by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
+    var repos by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
+    var starred by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
+    var gists by remember { mutableStateOf<List<GitHubApi.GistInfo>>(emptyList()) }
+    var people by remember { mutableStateOf<List<GitHubApi.UserInfo>>(emptyList()) }
+    var loading by remember { mutableStateOf(true) }
+    var err by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(login) {
+        loading = true; err = null
+        try {
+            val info = withContext(Dispatchers.IO) { GitHubApi.user(ctx, login) }
+            u = info
+            avatar = withContext(Dispatchers.IO) { GitHubApi.loadBitmap(ctx, info.avatarUrl) }
+            repos = withContext(Dispatchers.IO) { GitHubApi.userRepos(ctx, login) }
+            loading = false
+        } catch (e: Throwable) {
+            err = if (e is ApiError) {
+                if (e.code == 404) "用户不存在" else "HTTP ${e.code}"
+            } else e.message
+            loading = false
+        }
+    }
+
+    // 切到需要额外请求的 tab 时才去取，避免首屏一次打 8 个接口
+    LaunchedEffect(login, tab) {
+        val info = u ?: return@LaunchedEffect
+        try {
+            when (tab) {
+                2 -> if (starred.isEmpty()) starred = withContext(Dispatchers.IO) {
+                    GitHubApi.starred(ctx, info.login)
+                }
+                3 -> if (gists.isEmpty()) gists = withContext(Dispatchers.IO) {
+                    GitHubApi.gists(ctx, info.login)
+                }
+                5 -> { people = emptyList()
+                    people = withContext(Dispatchers.IO) { GitHubApi.followers(ctx, info.login) } }
+                6 -> { people = emptyList()
+                    people = withContext(Dispatchers.IO) { GitHubApi.following(ctx, info.login) } }
+                7 -> { people = emptyList()
+                    people = withContext(Dispatchers.IO) { GitHubApi.orgs(ctx, info.login) } }
+            }
+        } catch (e: Throwable) { /* 子 tab 失败不整页报错 */ }
+    }
+
+    when {
+        loading -> SkeletonList(3)
+        err != null -> CenteredText(err!!)
+        else -> {
+            val info = u!!
+            LazyColumn(Modifier.fillMaxSize().background(c.canvas),
+                contentPadding = PaddingValues(bottom = 24.dp)) {
+                item {
+                    Column(Modifier.padding(12.dp)) {
+                        HubCard {
+                            Column(Modifier.padding(16.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Avatar(avatar, 56)
+                                    Spacer(Modifier.width(14.dp))
+                                    Column(Modifier.weight(1f)) {
+                                        Text(info.name.ifBlank { info.login }, color = c.fg,
+                                            fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                                        Text("@${info.login}", color = c.fgMuted, fontSize = 12.sp)
+                                    }
+                                }
+                                if (info.bio.isNotBlank()) {
+                                    Spacer(Modifier.height(10.dp))
+                                    Text(info.bio, color = c.fgMuted, fontSize = 12.sp)
+                                }
+                                Spacer(Modifier.height(12.dp))
+                                Row {
+                                    Text("${GitHubApi.num(info.publicRepos)} 仓库",
+                                        color = c.fgMuted, fontSize = 12.sp)
+                                    Spacer(Modifier.width(16.dp))
+                                    Text("${GitHubApi.num(info.followers)} 粉丝",
+                                        color = c.fgMuted, fontSize = 12.sp)
+                                    Spacer(Modifier.width(16.dp))
+                                    Text("关注 ${GitHubApi.num(info.following)}",
+                                        color = c.fgMuted, fontSize = 12.sp)
+                                }
+                            }
+                        }
+                    }
+                }
+                item {
+                    Row(Modifier.horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 12.dp)) {
+                        tabs.forEachIndexed { i, t -> HubChip(t, tab == i) { tab = i } }
+                    }
+                }
+                when (tab) {
+                    0, 4 -> item { EventsList(info.login, onOpenRepo, onOpenUser) }
+                    1 -> if (repos.isEmpty()) item { CenteredText("还没有公开仓库") }
+                    else items(repos) { r ->
+                        Box(Modifier.background(c.bg)) {
+                            RepoRow(r, { onOpenRepo(r.ownerLogin, r.name) })
+                        }
+                    }
+                    2 -> if (starred.isEmpty()) item { CenteredText("还没有 Star") }
+                    else items(starred) { r ->
+                        Box(Modifier.background(c.bg)) {
+                            RepoRow(r, { onOpenRepo(r.ownerLogin, r.name) })
+                        }
+                    }
+                    3 -> if (gists.isEmpty()) item { CenteredText("还没有 Gist") }
+                    else items(gists) { g ->
+                        Column(Modifier.fillMaxWidth().background(c.bg)
+                            .clickable { onOpenWeb("https://gist.github.com/${g.id}") }
+                            .padding(horizontal = 14.dp, vertical = 10.dp)) {
+                            Text(g.description.ifBlank { g.files.firstOrNull() ?: "未命名" },
+                                color = c.fg, fontSize = 13.sp, maxLines = 2,
+                                overflow = TextOverflow.Ellipsis)
+                            Spacer(Modifier.height(4.dp))
+                            Row {
+                                Text(g.files.firstOrNull() ?: "", color = c.fgMuted,
+                                    fontSize = 11.sp)
+                                Spacer(Modifier.width(8.dp))
+                                Text(GitHubApi.timeAgo(g.updatedAt), color = c.fgSubtle,
+                                    fontSize = 11.sp)
+                            }
+                        }
+                        Divider(color = c.borderMuted, thickness = 0.5.dp)
+                    }
+                    else -> if (people.isEmpty()) item {
+                        CenteredText(if (tab == 5) "还没有粉丝"
+                        else if (tab == 6) "还没有关注任何人" else "还没有加入组织")
+                    } else items(people) { pu ->
+                        Box(Modifier.background(c.bg)) { UserRow(pu) { onOpenUser(pu.login) } }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun SettingsScreen(
     onOpenWeb: (String) -> Unit = {},
     onLogout: () -> Unit = {},
