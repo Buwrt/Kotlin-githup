@@ -39,34 +39,19 @@ Daemon will be stopped at the end of the build
 > Task :app:mergeDebugAssets
 > Task :app:desugarDebugFileDependencies
 > Task :app:compressDebugAssets
-> Task :app:processDebugManifestForPackage
+> Task :app:mergeDebugJniLibFolders FROM-CACHE
 > Task :app:checkDebugDuplicateClasses
-> Task :app:processDebugResources
+> Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:processDebugManifestForPackage
 > Task :app:mergeExtDexDebug
 > Task :app:mergeLibDexDebug
-> Task :app:mergeDebugJniLibFolders FROM-CACHE
-> Task :app:mergeDebugNativeLibs NO-SOURCE
 > Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:processDebugResources
 > Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
 > Task :app:compileDebugKotlin
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:482:5 Conflicting overloads: public final fun langColor(lang: String): Long defined in com.hubmobile.app.compose.GitHubApi, public final fun langColor(lang: String): Long defined in com.hubmobile.app.compose.GitHubApi
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:1024:5 Conflicting overloads: public final fun langColor(lang: String): Long defined in com.hubmobile.app.compose.GitHubApi, public final fun langColor(lang: String): Long defined in com.hubmobile.app.compose.GitHubApi
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/RepoScreen.kt:277:1 This annotation is not repeatable
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/RepoScreen.kt:325:26 Unresolved reference: background
 e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/RepoScreen.kt:348:52 Unresolved reference: horizontalScroll
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/RepoScreen.kt:355:41 Unresolved reference: background
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/RepoScreen.kt:356:66 Overload resolution ambiguity: 
-public final fun langColor(lang: String): Long defined in com.hubmobile.app.compose.GitHubApi
-public final fun langColor(lang: String): Long defined in com.hubmobile.app.compose.GitHubApi
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/RepoScreen.kt:452:10 Unresolved reference: background
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/RepoScreen.kt:502:26 Unresolved reference: background
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/RepoScreen.kt:511:26 Unresolved reference: background
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/RepoScreen.kt:527:22 Unresolved reference: background
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:244:49 Overload resolution ambiguity: 
-public final fun langColor(lang: String): Long defined in com.hubmobile.app.compose.GitHubApi
-public final fun langColor(lang: String): Long defined in com.hubmobile.app.compose.GitHubApi
 
 > Task :app:compileDebugKotlin FAILED
 
@@ -330,5 +315,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 2m
+BUILD FAILED in 2m 7s
 27 actionable tasks: 26 executed, 1 from cache
