@@ -82,10 +82,29 @@ fun CenteredLoading(modifier: Modifier = Modifier) {
     }
 }
 
+/**
+ * 居中提示（空态 / 错误）。
+ *
+ * ⚠️ fill=true 时用 fillMaxSize —— **只能在普通容器里这么用**。
+ * LazyColumn 的 item 垂直约束是无限的（容器本身可滚动），
+ * 在里面 fillMaxSize 会让高度变成无限，Compose 直接抛
+ * `IllegalStateException`（纵向可滚动组件被以无限最大高度约束测量）。
+ * 表现是：列表刚渲染出来，App 就没了。
+ *
+ * 所以放进 LazyColumn 的 item 时必须传 fill = false（改用 fillMaxWidth + 上下留白）。
+ */
 @Composable
-fun CenteredText(msg: String, action: (@Composable () -> Unit)? = null) {
+fun CenteredText(
+    msg: String,
+    action: (@Composable () -> Unit)? = null,
+    fill: Boolean = true
+) {
     val c = LocalHubColors.current
-    Box(Modifier.fillMaxSize(), Alignment.Center) {
+    Box(
+        if (fill) Modifier.fillMaxSize()
+        else Modifier.fillMaxWidth().padding(vertical = 36.dp),
+        Alignment.Center
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             HubIcon("alert", Modifier.size(36.dp), c.fgSubtle)
             Spacer(Modifier.height(8.dp))
@@ -373,7 +392,7 @@ fun HomeScreen(
                 }
                 // 3) 仓库列表
                 if (repos.isEmpty()) {
-                    item { CenteredText("还没有仓库，点击「新建」创建第一个仓库") }
+                    item { CenteredText("还没有仓库，点击「新建」创建第一个仓库", fill = false) }
                 } else {
                     items(repos) { r ->
                         Box(Modifier.background(c.bg)) {
@@ -772,19 +791,19 @@ fun UserScreen(
                 }
                 when (tab) {
                     0, 4 -> item { EventsList(info.login, onOpenRepo, onOpenUser) }
-                    1 -> if (repos.isEmpty()) item { CenteredText("还没有公开仓库") }
+                    1 -> if (repos.isEmpty()) item { CenteredText("还没有公开仓库", fill = false) }
                     else items(repos) { r ->
                         Box(Modifier.background(c.bg)) {
                             RepoRow(r, { onOpenRepo(r.ownerLogin, r.name) })
                         }
                     }
-                    2 -> if (starred.isEmpty()) item { CenteredText("还没有 Star") }
+                    2 -> if (starred.isEmpty()) item { CenteredText("还没有 Star", fill = false) }
                     else items(starred) { r ->
                         Box(Modifier.background(c.bg)) {
                             RepoRow(r, { onOpenRepo(r.ownerLogin, r.name) })
                         }
                     }
-                    3 -> if (gists.isEmpty()) item { CenteredText("还没有 Gist") }
+                    3 -> if (gists.isEmpty()) item { CenteredText("还没有 Gist", fill = false) }
                     else items(gists) { g ->
                         Column(Modifier.fillMaxWidth().background(c.bg)
                             .clickable { onOpenWeb("https://gist.github.com/${g.id}") }
@@ -804,8 +823,10 @@ fun UserScreen(
                         Divider(color = c.borderMuted, thickness = 0.5.dp)
                     }
                     else -> if (people.isEmpty()) item {
-                        CenteredText(if (tab == 5) "还没有粉丝"
-                        else if (tab == 6) "还没有关注任何人" else "还没有加入组织")
+                        CenteredText(
+                            if (tab == 5) "还没有粉丝"
+                            else if (tab == 6) "还没有关注任何人" else "还没有加入组织",
+                            fill = false)
                     } else items(people) { pu ->
                         Box(Modifier.background(c.bg)) { UserRow(pu) { onOpenUser(pu.login) } }
                     }

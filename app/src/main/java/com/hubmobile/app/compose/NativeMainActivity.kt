@@ -8,6 +8,8 @@ import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -135,8 +137,18 @@ private fun AppRoot(
     var unread by remember { mutableStateOf(0) }
     var update by remember { mutableStateOf<GitHubApi.UpdateInfo?>(null) }
     var updateTip by remember { mutableStateOf<String?>(null) }
+    /*
+     * 上次崩溃：启动就读出来，有就直接弹。
+     *
+     * 「界面转着圈就没了」这种问题，没有堆栈就只能靠猜 —— 猜错一次
+     * 就是白等一轮构建。所以只要存在崩溃记录，下次打开就主动摊开，
+     * 让它能被看到、能被复制出来。
+     * 用户点「知道了」即清除，不会重复打扰。
+     */
+    var crash by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
+        crash = try { com.hubmobile.app.CrashLog.readLast(ctx) } catch (e: Throwable) { null }
         myLogin = try {
             withContext(Dispatchers.IO) { GitHubApi.me(ctx)?.login ?: "" }
         } catch (e: Throwable) { "" }
@@ -395,6 +407,39 @@ private fun AppRoot(
                     )
                 }
             }
+        }
+
+        /*
+         * 崩溃记录弹窗。
+         * 它是 Error 级信息的唯一出口 —— 复现一次崩溃的成本远高于看一眼这段。
+         */
+        if (crash != null) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { },
+                title = { Text("上次崩溃（可复制反馈）", fontSize = 15.sp) },
+                text = {
+                    Text(
+                        crash!!, color = c.fgMuted, fontSize = 10.sp,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        modifier = Modifier.verticalScroll(rememberScrollState())
+                    )
+                },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = {
+                        val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                                as android.content.ClipboardManager
+                        cm.setPrimaryClip(
+                            android.content.ClipData.newPlainText("crash", crash))
+                        updateTip = "已复制到剪贴板"
+                    }) { Text("复制", color = c.accent) }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = {
+                        try { com.hubmobile.app.CrashLog.clear(ctx) } catch (e: Throwable) {}
+                        crash = null
+                    }) { Text("知道了") }
+                }
+            )
         }
 
         // 更新弹窗：只在真有更新时出现（已是最新版完全静默）
