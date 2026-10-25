@@ -317,6 +317,7 @@ private fun AppRoot(
                             onOpenFile = { path, branch -> file = Triple(o, branch, path) },
                             onOpenInWeb = { openWeb(ctx, "https://github.com/$o/$n") },
                             onOpenWeb = { openWeb(ctx, it) },
+                            onOpenOwner = { user = o },
                             onOpenDetail = { num, isPr ->
                                 detailIsPr = isPr
                                 detail = Triple(o, n, num)

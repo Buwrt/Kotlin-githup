@@ -36,7 +36,11 @@ data class RepoInfo(
     val updatedAt: String,
     val private: Boolean,
     val fork: Boolean = false,
-    val topics: List<String>
+    val topics: List<String>,
+    val archived: Boolean = false,
+    val homepage: String = "",
+    val cloneUrl: String = "",
+    val sshUrl: String = ""
 ) {
     /** 仓库名（去掉 owner 前缀）。列表里显示 owner/name，这里单独要 name */
     val name: String get() = fullName.substringAfterLast('/')
@@ -67,7 +71,11 @@ data class RepoInfo(
                 updatedAt = o.safe("updated_at"),
                 private = o.optBoolean("private"),
                 fork = o.optBoolean("fork"),
-                topics = topics
+                topics = topics,
+                archived = o.optBoolean("archived"),
+                homepage = o.safe("homepage"),
+                cloneUrl = o.safe("clone_url"),
+                sshUrl = o.safe("ssh_url")
             )
         }
     }
@@ -969,6 +977,51 @@ object GitHubApi {
     } catch (e: Throwable) {
         if (e is ApiError && e.code == 404) false else throw e
     }
+
+    /* ---------- 仓库页操作：Star / 关注 / Fork ---------- */
+
+    /** 是否已订阅（watch）。GET 200=已订阅 404=未订阅 */
+    fun isWatching(ctx: Context, owner: String, name: String): Boolean = try {
+        Http.request("GET", "$API/repos/$owner/$name/subscription", null, headers(ctx))
+        true
+    } catch (e: Throwable) {
+        if (e is ApiError && e.code == 404) false else false
+    }
+
+    /** 关注 / 取关仓库。PUT 订阅，DELETE 取消 */
+    fun setWatching(ctx: Context, owner: String, name: String, on: Boolean): Boolean = try {
+        val b = if (on) JSONObject().put("subscribed", true)
+            .put("ignored", false).toString() else null
+        write(if (on) "PUT" else "DELETE",
+            "$API/repos/$owner/$name/subscription", b, ctx)
+        true
+    } catch (e: Throwable) { false }
+
+    /** Fork。返回新仓库 full_name；失败返回 null */
+    fun forkRepo(ctx: Context, owner: String, name: String): String? = try {
+        val s = write("POST", "$API/repos/$owner/$name/forks", "{}", ctx)
+        JSONObject(s).safe("full_name").ifBlank { null }
+    } catch (e: Throwable) { null }
+
+    /* ---------- 语言色（对齐 api.js 的 U.langColor） ---------- */
+
+    private val LANG_COLORS = mapOf(
+        "JavaScript" to 0xFFF1E05A, "TypeScript" to 0xFF3178C6, "Python" to 0xFF3572A5,
+        "Java" to 0xFFB07219, "Kotlin" to 0xFFA97BFF, "Go" to 0xFF00ADD8,
+        "Rust" to 0xFFDEA584, "C++" to 0xFFF34B7D, "C" to 0xFF555555,
+        "C#" to 0xFF178600, "Ruby" to 0xFF701516, "PHP" to 0xFF4F5D95,
+        "Swift" to 0xFFF05138, "Dart" to 0xFF00B4AB, "HTML" to 0xFFE34C26,
+        "CSS" to 0xFF563D7C, "SCSS" to 0xFFC6538C, "Vue" to 0xFF41B883,
+        "Shell" to 0xFF89E051, "Lua" to 0xFF000080, "Scala" to 0xFFC22D40,
+        "Perl" to 0xFF0298C3, "R" to 0xFF198CE7, "Objective-C" to 0xFF438EFF,
+        "Dockerfile" to 0xFF384D54, "Makefile" to 0xFF427819,
+        "Jupyter Notebook" to 0xFFDA5B0B, "Elixir" to 0xFF6E4A7E,
+        "Haskell" to 0xFF5E5086, "Julia" to 0xFFA270BA, "Zig" to 0xFFEC915C,
+        "Vim Script" to 0xFF199F4B, "PowerShell" to 0xFF012456,
+        "Assembly" to 0xFF6E4C13, "Nix" to 0xFF7E7EFF
+    )
+
+    fun langColor(lang: String): Long = LANG_COLORS[lang] ?: 0xFF8B949E
 
     /* ---------- 个人资料编辑 ---------- */
 

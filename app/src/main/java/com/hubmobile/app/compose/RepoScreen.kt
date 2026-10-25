@@ -7,6 +7,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import kotlinx.coroutines.MainScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -85,7 +88,8 @@ fun RepoScreen(
     onOpenDetail: (Int, Boolean) -> Unit = { n, isPr ->
         onOpenWeb("https://github.com/$owner/$name/" +
             (if (isPr) "pull" else "issues") + "/$n")
-    }
+    },
+    onOpenOwner: () -> Unit = {}
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -209,7 +213,7 @@ fun RepoScreen(
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(bottom = 32.dp)
                             ) {
-                                item { RepoHeader(r, avatar) }
+                                item { RepoHeader(r, avatar, onOpenOwner) }
                                 item {
                                     Row(
                                         Modifier.fillMaxWidth()
@@ -270,97 +274,272 @@ fun RepoScreen(
 }
 
 @Composable
-private fun RepoHeader(r: RepoInfo, avatar: Bitmap?) {
+@Composable
+private fun RepoHeader(
+    r: RepoInfo,
+    avatar: android.graphics.Bitmap?,
+    onOpenOwner: () -> Unit
+) {
+    val ctx = LocalContext.current
+    val c = LocalHubColors.current
+    var starred by remember { mutableStateOf<Boolean?>(null) }
+    var watching by remember { mutableStateOf<Boolean?>(null) }
+    var stars by remember { mutableStateOf(r.stars) }
+    var toast by remember { mutableStateOf<String?>(null) }
+
+    // 进页面时查一次 Star / 关注 状态（没令牌就留空，按钮仍可点）
+    LaunchedEffect(r.fullName) {
+        starred = try {
+            withContext(Dispatchers.IO) { GitHubApi.isStarred(ctx, r.ownerLogin, r.name) }
+        } catch (e: Throwable) { null }
+        watching = try {
+            withContext(Dispatchers.IO) { GitHubApi.isWatching(ctx, r.ownerLogin, r.name) }
+        } catch (e: Throwable) { null }
+    }
+
     Column(Modifier.fillMaxWidth().padding(16.dp)) {
+        /* repo-name：owner 可点、name 加粗，后跟「私有」「已归档」chip */
         Row(verticalAlignment = Alignment.CenterVertically) {
-            if (avatar != null) {
-                androidx.compose.foundation.Image(
-                    bitmap = avatar.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier.size(28.dp).clip(CircleShape)
-                )
-                Spacer(Modifier.width(8.dp))
-            }
-            Text(
-                r.fullName,
-                color = LocalHubColors.current.fg,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 16.sp
-            )
-            if (r.private) {
-                Spacer(Modifier.width(8.dp))
-                Surface(
-                    color = LocalHubColors.current.bgHi,
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text(
-                        "Private",
-                        Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        fontSize = 10.sp,
-                        color = LocalHubColors.current.fgMuted
-                    )
-                }
-            }
+            HubIcon(if (r.fork) "fork" else "repo", Modifier.size(16.dp), c.fgMuted)
+            Spacer(Modifier.width(6.dp))
+            Text(r.ownerLogin, color = c.accent, fontSize = 15.sp,
+                modifier = Modifier.clickable(onClick = onOpenOwner))
+            Text(" / ", color = c.fgSubtle, fontSize = 15.sp)
+            Text(r.name, color = c.fg, fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f), maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
+            if (r.private) RepoChip("私有")
+            if (r.archived) RepoChip("已归档")
         }
 
         if (r.description.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
-            Text(r.description, color = LocalHubColors.current.fgMuted, fontSize = 13.sp)
+            Text(r.description, color = c.fgMuted, fontSize = 13.sp)
         }
 
         if (r.topics.isNotEmpty()) {
             Spacer(Modifier.height(8.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                r.topics.take(6).forEach { t ->
-                    Surface(
-                        color = LocalHubColors.current.accent.copy(alpha = 0.15f),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text(
-                            t, Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                            fontSize = 11.sp, color = LocalHubColors.current.accent
-                        )
+            Row {
+                r.topics.take(8).forEach { t ->
+                    Box(Modifier.padding(end = 5.dp, bottom = 5.dp)
+                        .background(c.accentSubtle, RoundedCornerShape(12.dp))
+                        .padding(horizontal = 9.dp, vertical = 3.dp)) {
+                        Text(t, color = c.accent, fontSize = 11.sp)
                     }
                 }
             }
         }
 
-        Spacer(Modifier.height(12.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            StatCell(compact(r.stars), "Stars")
-            StatCell(compact(r.forks), "Forks")
-            StatCell(compact(r.watchers), "Watch")
-            StatCell(compact(r.openIssues), "Issues")
+        if (r.homepage.isNotBlank()) {
+            Spacer(Modifier.height(7.dp))
+            Row(verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.clickable { openWebStatic(ctx, r.homepage) }) {
+                HubIcon("link", Modifier.size(14.dp), c.fgMuted)
+                Spacer(Modifier.width(6.dp))
+                Text(r.homepage.removePrefix("https://").removePrefix("http://"),
+                    color = c.accent, fontSize = 12.sp, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
+            }
         }
 
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        /* repo-stats：star / fork / 关注 / 语言色点 / 许可证 / 默认分支 / 更新于 */
+        Spacer(Modifier.height(11.dp))
+        Row(verticalAlignment = Alignment.CenterVertically,
+            modifier = androidx.compose.foundation.horizontalScroll(
+                androidx.compose.foundation.rememberScrollState())) {
+            HeadStat("star", GitHubApi.num(stars), "star")
+            HeadStat("fork", GitHubApi.num(r.forks), "fork")
+            HeadStat("eye", GitHubApi.num(r.watchers), "关注")
             if (r.language.isNotBlank()) {
-                val langDot = LocalHubColors.current.accent
-                Canvas(Modifier.size(10.dp)) {
-                    drawCircle(color = langDot, radius = size.minDimension / 2f)
-                }
-                Spacer(Modifier.width(6.dp))
-                Text(r.language, color = LocalHubColors.current.fgMuted, fontSize = 12.sp)
                 Spacer(Modifier.width(14.dp))
+                Box(Modifier.size(8.dp).background(
+                    androidx.compose.ui.graphics.Color(GitHubApi.langColor(r.language)),
+                    androidx.compose.foundation.shape.CircleShape))
+                Spacer(Modifier.width(5.dp))
+                Text(r.language, color = c.fgMuted, fontSize = 12.sp)
             }
             if (r.license.isNotBlank() && r.license != "NOASSERTION") {
-                Text(r.license, color = LocalHubColors.current.fgMuted, fontSize = 12.sp)
                 Spacer(Modifier.width(14.dp))
+                HubIcon("law", Modifier.size(13.dp), c.fgMuted)
+                Spacer(Modifier.width(4.dp))
+                Text(r.license, color = c.fgMuted, fontSize = 12.sp)
             }
-            Text("更新于 ${GitHubApi.shortDate(r.updatedAt)}", color = LocalHubColors.current.fgMuted, fontSize = 12.sp)
+            if (r.defaultBranch.isNotBlank()) {
+                Spacer(Modifier.width(14.dp))
+                HubIcon("fork", Modifier.size(13.dp), c.fgMuted)
+                Spacer(Modifier.width(4.dp))
+                Text(r.defaultBranch, color = c.fgMuted, fontSize = 12.sp,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+            }
+            if (r.updatedAt.isNotBlank()) {
+                Spacer(Modifier.width(14.dp))
+                HubIcon("history", Modifier.size(13.dp), c.fgMuted)
+                Spacer(Modifier.width(4.dp))
+                Text("更新于 ${GitHubApi.timeAgo(r.updatedAt)}", color = c.fgMuted,
+                    fontSize = 12.sp)
+            }
+        }
+
+        /* repo-actions：Star / 关注 / Fork —— 网页版这三个按钮就在这里 */
+        Spacer(Modifier.height(12.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            RepoActionButton(
+                icon = if (starred == true) "star" else "star",
+                text = if (starred == true) "已 Star" else "Star",
+                active = starred == true,
+                modifier = Modifier.weight(1f)
+            ) {
+                MainScope().launch {
+                    val now = starred == true
+                    val ok = withContext(Dispatchers.IO) {
+                        if (now) GitHubApi.unstar(ctx, r.ownerLogin, r.name)
+                        else GitHubApi.star(ctx, r.ownerLogin, r.name)
+                    }
+                    if (ok) {
+                        starred = !now
+                        stars = if (now) (stars - 1).coerceAtLeast(0) else stars + 1
+                        toast = if (now) "已取消 Star" else "已 Star"
+                    } else toast = "需要登录才能 Star"
+                }
+            }
+            RepoActionButton(
+                icon = "eye",
+                text = if (watching == true) "已关注" else "关注",
+                active = watching == true,
+                modifier = Modifier.weight(1f)
+            ) {
+                MainScope().launch {
+                    val now = watching == true
+                    val ok = withContext(Dispatchers.IO) {
+                        GitHubApi.setWatching(ctx, r.ownerLogin, r.name, !now)
+                    }
+                    if (ok) {
+                        watching = !now
+                        toast = if (now) "已取消关注" else "已关注"
+                    } else toast = "需要登录才能关注"
+                }
+            }
+            RepoActionButton(
+                icon = "fork", text = "Fork", active = false,
+                modifier = Modifier.weight(1f)
+            ) {
+                MainScope().launch {
+                    val full = withContext(Dispatchers.IO) {
+                        GitHubApi.forkRepo(ctx, r.ownerLogin, r.name)
+                    }
+                    toast = if (full != null) "已 Fork 到 $full" else "需要登录才能 Fork"
+                }
+            }
+        }
+
+        /* 克隆地址区：HTTPS / SSH 切换 + 复制（对齐 cloneWidget） */
+        Spacer(Modifier.height(12.dp))
+        CloneBox(r)
+
+        if (toast != null) {
+            Spacer(Modifier.height(8.dp))
+            Text(toast!!, color = c.fgMuted, fontSize = 11.sp)
         }
     }
-    Divider(color = LocalHubColors.current.border, thickness = 0.5.dp)
+    Divider(color = c.borderMuted, thickness = 0.5.dp)
+}
+
+/** 私有 / 已归档 这类小标签 */
+@Composable
+private fun RepoChip(text: String) {
+    val c = LocalHubColors.current
+    Box(Modifier.padding(start = 6.dp)
+        .background(c.bgHi, RoundedCornerShape(10.dp))
+        .padding(horizontal = 7.dp, vertical = 2.dp)) {
+        Text(text, color = c.fgMuted, fontSize = 10.sp)
+    }
 }
 
 @Composable
-private fun StatCell(value: String, label: String) {
+private fun HeadStat(icon: String, value: String, label: String) {
+    val c = LocalHubColors.current
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(value, color = LocalHubColors.current.fg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        HubIcon(icon, Modifier.size(14.dp), c.fgMuted)
         Spacer(Modifier.width(4.dp))
-        Text(label, color = LocalHubColors.current.fgMuted, fontSize = 12.sp)
-        Spacer(Modifier.width(16.dp))
+        Text(value, color = c.fg, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        Spacer(Modifier.width(3.dp))
+        Text(label, color = c.fgMuted, fontSize = 12.sp)
+    }
+    Spacer(Modifier.width(14.dp))
+}
+
+@Composable
+private fun RepoActionButton(
+    icon: String, text: String, active: Boolean,
+    modifier: Modifier = Modifier, onClick: () -> Unit
+) {
+    val c = LocalHubColors.current
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.height(34.dp),
+        contentPadding = PaddingValues(horizontal = 6.dp),
+        shape = RoundedCornerShape(6.dp)
+    ) {
+        HubIcon(icon, Modifier.size(14.dp), if (active) c.attention else c.fgMuted)
+        Spacer(Modifier.width(4.dp))
+        Text(text, fontSize = 12.sp, maxLines = 1,
+            color = if (active) c.attention else c.fg)
+    }
+}
+
+/** 克隆地址：HTTPS / SSH 切换 + 复制（对齐 page-repo.js 的 cloneWidget） */
+@Composable
+private fun CloneBox(r: RepoInfo) {
+    val ctx = LocalContext.current
+    val c = LocalHubColors.current
+    var kind by remember { mutableStateOf("https") }
+    val https = r.cloneUrl.ifBlank { "https://github.com/${r.fullName}.git" }
+    val ssh = r.sshUrl.ifBlank { "git@github.com:${r.fullName}.git" }
+    val url = if (kind == "ssh") ssh else https
+
+    Column {
+        Row {
+            Box(Modifier.background(
+                if (kind == "https") c.accentSubtle else c.bgHi,
+                RoundedCornerShape(6.dp))
+                .clickable { kind = "https" }
+                .padding(horizontal = 12.dp, vertical = 6.dp)) {
+                Text("HTTPS", color = if (kind == "https") c.accent else c.fgMuted,
+                    fontSize = 12.sp)
+            }
+            Spacer(Modifier.width(6.dp))
+            Box(Modifier.background(
+                if (kind == "ssh") c.accentSubtle else c.bgHi,
+                RoundedCornerShape(6.dp))
+                .clickable { kind = "ssh" }
+                .padding(horizontal = 12.dp, vertical = 6.dp)) {
+                Text("SSH", color = if (kind == "ssh") c.accent else c.fgMuted,
+                    fontSize = 12.sp)
+            }
+        }
+        Spacer(Modifier.height(6.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                url, color = c.fg, fontSize = 12.sp, maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                modifier = Modifier.weight(1f)
+                    .background(c.bgHi, RoundedCornerShape(6.dp))
+                    .padding(horizontal = 10.dp, vertical = 9.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            OutlinedButton(
+                onClick = {
+                    val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("clone", url))
+                },
+                modifier = Modifier.height(36.dp),
+                contentPadding = PaddingValues(horizontal = 8.dp)
+            ) { Text("复制", fontSize = 12.sp) }
+        }
+        Spacer(Modifier.height(5.dp))
+        Text("点击复制按钮即可复制地址。", color = c.fgSubtle, fontSize = 10.sp)
     }
 }
 
