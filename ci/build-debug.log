@@ -42,14 +42,14 @@ Daemon will be stopped at the end of the build
 > Task :app:mergeDebugJniLibFolders FROM-CACHE
 > Task :app:checkDebugDuplicateClasses
 > Task :app:mergeDebugNativeLibs NO-SOURCE
+> Task :app:processDebugManifestForPackage
+> Task :app:mergeExtDexDebug
 > Task :app:stripDebugDebugSymbols NO-SOURCE
 > Task :app:mergeLibDexDebug
 > Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
-> Task :app:processDebugManifestForPackage
 > Task :app:processDebugResources
-> Task :app:mergeExtDexDebug
 > Task :app:compileDebugKotlin
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:183:48 Parameter 'speed' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:185:42 Unsafe use of a nullable receiver of type LongArray?
@@ -112,7 +112,6 @@ w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hu
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Icons.kt:40:13 Variable 'stroke' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Icons.kt:41:13 Variable 'fill' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Icons.kt:230:22 Parameter 'scope' is never used
-w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/NativeMainActivity.kt:106:5 Parameter 'onThemeChange' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:267:9 Variable 'c' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:390:23 Parameter 'login' is never used
 
@@ -123,11 +122,11 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :app:dexBuilderDebug
 > Task :app:mergeDebugGlobalSynthetics
 > Task :app:processDebugJavaRes
-> Task :app:mergeProjectDexDebug
 > Task :app:mergeDebugJavaResource
+> Task :app:mergeProjectDexDebug
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 2m 2s
+BUILD SUCCESSFUL in 2m 45s
 35 actionable tasks: 34 executed, 1 from cache
