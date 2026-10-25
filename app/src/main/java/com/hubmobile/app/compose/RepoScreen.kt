@@ -80,7 +80,8 @@ fun RepoScreen(
     name: String,
     onBack: () -> Unit,
     onOpenFile: (String, String) -> Unit,
-    onOpenInWeb: () -> Unit
+    onOpenInWeb: () -> Unit,
+    onOpenIssues: () -> Unit
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -188,10 +189,21 @@ fun RepoScreen(
                         contentPadding = PaddingValues(bottom = 32.dp)
                     ) {
                         item { RepoHeader(r, avatar) }
-                        item { BranchRow(branch, branches) { b ->
-                            branch = b
-                            scope.launch { loadDir("") }
-                        } }
+                        item {
+                            Row(
+                                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                BranchBox(branch, branches) { b ->
+                                    branch = b
+                                    scope.launch { loadDir("") }
+                                }
+                                Spacer(Modifier.width(10.dp))
+                                OutlinedButton(onClick = onOpenIssues) {
+                                    Text("Issues", fontSize = 12.sp)
+                                }
+                            }
+                        }
                         item {
                             PathBar(path) { target ->
                                 scope.launch { loadDir(target) }
@@ -317,11 +329,12 @@ private fun StatCell(value: String, label: String) {
 }
 
 @Composable
-private fun BranchRow(current: String, all: List<String>, onPick: (String) -> Unit) {
+private fun BranchBox(current: String, all: List<String>, onPick: (String) -> Unit) {
     var open by remember { mutableStateOf(false) }
-    Box(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
+    Box {
         OutlinedButton(onClick = { open = true }) {
-            Text("分支：$current", fontSize = 12.sp)
+            Text("分支：$current", fontSize = 12.sp, maxLines = 1,
+                overflow = TextOverflow.Ellipsis, modifier = Modifier.width(140.dp))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             all.take(50).forEach { b ->

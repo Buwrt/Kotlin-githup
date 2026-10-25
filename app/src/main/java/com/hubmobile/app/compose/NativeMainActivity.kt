@@ -78,14 +78,17 @@ private fun AppRoot(initialRepo: Pair<String, String>?) {
     val ctx = LocalContext.current
     var repo by remember { mutableStateOf(initialRepo) }
     var user by remember { mutableStateOf<String?>(null) }
+    // 仓库内子页：文件查看 / Issues。用 Pair 存参数，避免再定义数据类
+    var file by remember { mutableStateOf<Triple<String, String, String>?>(null) } // owner/branch/path
+    var issues by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     Scaffold(
         bottomBar = {
             NavigationBar(containerColor = HubColors.Surface) {
                 Tab.values().forEach { t ->
                     NavigationBarItem(
-                        selected = tab == t && repo == null && user == null,
-                        onClick = { tab = t; repo = null; user = null },
+                        selected = tab == t && repo == null && user == null && file == null && issues == null,
+                        onClick = { tab = t; repo = null; user = null; file = null; issues = null },
                         label = { Text(t.label, fontSize = 11.sp) },
                         icon = { TabIcon(t) },
                         colors = NavigationBarItemDefaults.colors(
@@ -102,29 +105,47 @@ private fun AppRoot(initialRepo: Pair<String, String>?) {
     ) { pad ->
         Box(Modifier.fillMaxSize().padding(pad)) {
             when {
+                file != null -> {
+                    val (o, br, p) = file!!
+                    val n = repo?.second ?: return@Box
+                    FileScreen(
+                        owner = o, name = n, branch = br, path = p,
+                        onBack = { file = null },
+                        onOpenWeb = { openWeb(ctx, it) }
+                    )
+                }
+                issues != null -> {
+                    val (o, n) = issues!!
+                    IssuesScreen(
+                        owner = o, name = n,
+                        onBack = { issues = null },
+                        onOpenWeb = { openWeb(ctx, it) }
+                    )
+                }
                 repo != null -> {
                     val (o, n) = repo!!
                     RepoScreen(
                         owner = o, name = n,
                         onBack = { repo = null },
-                        onOpenFile = { path, branch ->
-                            openWeb(ctx, "https://github.com/$o/$n/blob/$branch/$path")
-                        },
-                        onOpenInWeb = { openWeb(ctx, "https://github.com/$o/$n") }
+                        // 文件查看现在是原生页 —— 这是本轮最关键的补齐，
+                        // 在此之前点开文件会跳内置浏览器
+                        onOpenFile = { path, branch -> file = Triple(o, branch, path) },
+                        onOpenInWeb = { openWeb(ctx, "https://github.com/$o/$n") },
+                        onOpenIssues = { issues = o to n }
                     )
                 }
                 user != null -> UserScreen(
                     login = user!!,
-                    onOpenRepo = { o, n -> repo = o to n },
+                    onOpenRepo = { o, n -> repo = o to n; file = null; issues = null },
                     onBack = { user = null }
                 )
                 tab == Tab.Home -> HomeScreen(
-                    onOpenRepo = { o, n -> repo = o to n },
+                    onOpenRepo = { o, n -> repo = o to n; file = null; issues = null },
                     onOpenUser = { user = it },
                     onNeedToken = { tab = Tab.Settings }
                 )
                 tab == Tab.Search -> SearchScreen(
-                    onOpenRepo = { o, n -> repo = o to n },
+                    onOpenRepo = { o, n -> repo = o to n; file = null; issues = null },
                     onOpenUser = { user = it }
                 )
                 tab == Tab.Settings -> SettingsTab()

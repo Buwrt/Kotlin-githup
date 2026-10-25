@@ -242,6 +242,112 @@ object GitHubApi {
         return SearchResult(o.optInt("total_count"), out)
     }
 
+    /* ---------- 文件内容 ---------- */
+
+    data class FileContent(
+        val name: String,
+        val path: String,
+        val size: Long,
+        /** 文本内容；二进制文件为 null */
+        val text: String?,
+        val isBinary: Boolean
+    )
+
+    /**
+     * 取单个文件内容。
+     * GitHub 的 contents API 对文本文件返回 base64 编码的字段；
+     * 超过 1MB 的文件这个接口不可用（会 403），那种情况返回 isBinary=true 让 UI 提示。
+     */
+    fun fileContent(ctx: Context, owner: String, name: String, path: String, ref: String): FileContent {
+        val url = "$API/repos/$owner/$name/contents/" +
+            path.trim('/').split('/').joinToString("/") { java.net.URLEncoder.encode(it, "UTF-8") } +
+            "?ref=" + java.net.URLEncoder.encode(ref, "UTF-8")
+        val o = JSONObject(get(ctx, url))
+        val size = o.optLong("size")
+        val b64 = o.optString("content", "")
+        val enc = o.optString("encoding", "")
+        val text = if ("base64" == enc && b64.isNotBlank()) {
+            try {
+                String(android.util.Base64.decode(b64.replace("\n", ""), android.util.Base64.DEFAULT),
+                    Charsets.UTF_8)
+            } catch (e: Throwable) { null }
+        } else null
+        return FileContent(
+            name = o.optString("name"),
+            path = o.optString("path"),
+            size = size,
+            text = text,
+            isBinary = text == null
+        )
+    }
+
+    /* ---------- Issues ---------- */
+
+    data class IssueInfo(
+        val number: Int,
+        val title: String,
+        val state: String,
+        val user: String,
+        val comments: Int,
+        val createdAt: String,
+        val labels: List<String>
+    ) {
+        companion object {
+            fun from(o: JSONObject): IssueInfo {
+                val arr = o.optJSONArray("labels")
+                val ls = ArrayList<String>()
+                if (arr != null) for (i in 0 until arr.length()) {
+                    arr.optJSONObject(i)?.optString("name")?.let { if (it.isNotEmpty()) ls.add(it) }
+                }
+                return IssueInfo(
+                    number = o.optInt("number"),
+                    title = o.optString("title"),
+                    state = o.optString("state"),
+                    user = o.optJSONObject("user")?.optString("login") ?: "",
+                    comments = o.optInt("comments"),
+                    createdAt = o.optString("created_at"),
+                    labels = ls
+                )
+            }
+        }
+    }
+
+    /** open / closed / all */
+    fun issues(ctx: Context, owner: String, name: String, state: String = "open"): List<IssueInfo> {
+        val s = get(ctx, "$API/repos/$owner/$name/issues?state=$state&per_page=50&sort=updated")
+        val arr = org.json.JSONArray(s)
+        val out = ArrayList<IssueInfo>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            // issues 接口会把 PR 一起返回，这里过滤掉
+            if (o.has("pull_request")) continue
+            out.add(IssueInfo.from(o))
+        }
+        return out
+    }
+
+    /** 相对时间：3 天前 / 2 个月前 */
+    fun ago(iso: String): String {
+        if (iso.length < 10) return iso
+        return try {
+            val y = iso.substring(0, 4).toInt()
+            val m = iso.substring(5, 7).toInt()
+            val d = iso.substring(8, 10).toInt()
+            val cal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"))
+            val ny = cal.get(java.util.Calendar.YEAR)
+            val nm = cal.get(java.util.Calendar.MONTH) + 1
+            val nd = cal.get(java.util.Calendar.DAY_OF_MONTH)
+            val days = ((ny - y) * 365 + (nm - m) * 30 + (nd - d))
+            when {
+                days <= 0 -> "今天"
+                days == 1 -> "昨天"
+                days < 30 -> "$days 天前"
+                days < 365 -> "${days / 30} 个月前"
+                else -> "${days / 365} 年前"
+            }
+        } catch (e: Throwable) { iso.substring(0, 10) }
+    }
+
     fun humanSize(bytes: Long): String {
         if (bytes <= 0L) return ""
         val u = arrayOf("B", "KB", "MB", "GB")
