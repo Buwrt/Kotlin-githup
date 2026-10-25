@@ -345,8 +345,7 @@ private fun RepoHeader(
         /* repo-stats：star / fork / 关注 / 语言色点 / 许可证 / 默认分支 / 更新于 */
         Spacer(Modifier.height(11.dp))
         Row(verticalAlignment = Alignment.CenterVertically,
-            modifier = androidx.compose.foundation.horizontalScroll(
-                androidx.compose.foundation.rememberScrollState())) {
+            modifier = Modifier.horizontalScroll(rememberScrollState())) {
             HeadStat("star", GitHubApi.num(stars), "star")
             HeadStat("fork", GitHubApi.num(r.forks), "fork")
             HeadStat("eye", GitHubApi.num(r.watchers), "关注")
