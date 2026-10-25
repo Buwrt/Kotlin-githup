@@ -124,13 +124,20 @@ android {
     }
 
     /*
-     * Compose 编译器版本必须和 Kotlin 版本对得上，否则直接编译失败：
-     *   Kotlin 1.9.x  →  Compose Compiler 1.5.x
-     * 本项目 Kotlin 是 1.9.24，这里取 1.5.4。
-     * 哪天升到 Kotlin 2.0，编译器版本要一起升（且 AGP 要先到 8.2+）。
+     * Compose 编译器版本必须和 Kotlin 版本严格对得上，否则直接编译失败：
+     *   Kotlin 1.9.20 → Compose Compiler 1.5.4
+     *   Kotlin 1.9.24 → Compose Compiler 1.5.8   ← 本项目
+     *
+     * 这里踩过一次：先写的 1.5.4，CI 报
+     *   "This version (1.5.4) of the Compose Compiler requires Kotlin 1.9.20
+     *    but you appear to be using Kotlin 1.9.24"
+     * 同属 1.9.x 也不行 —— 编译器是按小版本逐个对齐的，不能想当然。
+     * 兼容对照表：developer.android.com/jetpack/androidx/releases/compose-kotlin
+     *
+     * 哪天升到 Kotlin 2.0，编译器版本要一起升（且 AGP 需先到 8.2+）。
      */
     composeOptions {
-        kotlinCompilerExtensionVersion '1.5.4'
+        kotlinCompilerExtensionVersion '1.5.8'
     }
 }
 
