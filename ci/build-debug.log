@@ -43,281 +43,92 @@ Daemon will be stopped at the end of the build
 > Task :app:checkDebugDuplicateClasses
 > Task :app:mergeDebugNativeLibs NO-SOURCE
 > Task :app:processDebugManifestForPackage
-> Task :app:mergeLibDexDebug
-> Task :app:stripDebugDebugSymbols NO-SOURCE
-> Task :app:processDebugResources
-> Task :app:validateSigningDebug
 > Task :app:mergeExtDexDebug
+> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:mergeLibDexDebug
+> Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
+> Task :app:processDebugResources
+> Task :app:compileDebugKotlin
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:183:48 Parameter 'speed' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:185:42 Unsafe use of a nullable receiver of type LongArray?
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:191:20 Unsafe use of a nullable receiver of type LongArray?
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:191:27 Unsafe use of a nullable receiver of type LongArray?
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:193:18 Unsafe use of a nullable receiver of type LongArray?
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:193:25 Unsafe use of a nullable receiver of type LongArray?
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:207:41 Unsafe use of a nullable receiver of type Long?
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:310:33 Elvis operator (?:) always returns the left operand of non-nullable type Long
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/CrashLog.kt:142:42 'versionCode: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/DownloadProvider.kt:208:28 Parameter 'ctx' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/Http.kt:699:42 Parameter 'port' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ImageProxy.kt:274:45 Unsafe use of a nullable receiver of type String?
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/LogBook.kt:285:38 Parameter 'ctx' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/MainActivity.kt:460:26 This declaration overrides deprecated member but not marked as deprecated itself. Please add @Deprecated annotation or suppress. See https://youtrack.jetbrains.com/issue/KT-47902 for details
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/MainActivity.kt:568:70 Parameter '_mimeType' is never used, could be renamed to _
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/MainActivity.kt:568:81 Parameter '_contentLength' is never used, could be renamed to _
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/MainActivity.kt:605:32 Parameter 'dead' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/NetBridge.kt:32:70 Elvis operator (?:) always returns the left operand of non-nullable type String
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/NetBridge.kt:33:58 Elvis operator (?:) always returns the left operand of non-nullable type String
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/NetBridge.kt:57:55 Elvis operator (?:) always returns the left operand of non-nullable type String
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/NotifWatchReceiver.kt:264:17 Condition 'token == null' is always 'false'
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/NotifWatchReceiver.kt:447:39 'constructor Builder(Context!)' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/SaveImageBridge.kt:311:28 'toLowerCase(Locale): String' is deprecated. Use lowercase() instead.
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/SaveImageBridge.kt:372:22 'toLowerCase(Locale): String' is deprecated. Use lowercase() instead.
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/SaveImageBridge.kt:386:41 'toLowerCase(Locale): String' is deprecated. Use lowercase() instead.
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/SignCheck.kt:98:57 'signatures: Array<(out) Signature!>!' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:262:17 Type mismatch: inferred type is File? but File was expected
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:327:25 Condition 'e.key != null' is always 'true'
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:327:42 Condition 'e.value != null' is always 'true'
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:439:27 Type mismatch: inferred type is File? but File was expected
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:571:61 Parameter 'attempt' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:587:25 Condition 'e.key != null' is always 'true'
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:587:42 Condition 'e.value != null' is always 'true'
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:696:20 Unnecessary non-null assertion (!!) on a non-null receiver of type OutputStream
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:773:16 Unnecessary non-null assertion (!!) on a non-null receiver of type OutputStream
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ThrottledDownloader.kt:776:18 Unnecessary non-null assertion (!!) on a non-null receiver of type InputStream
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:507:27 'constructor Builder(Context!)' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:523:15 'setPriority(Int): Notification.Builder!' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:523:40 'PRIORITY_MIN: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:539:15 'setPriority(Int): Notification.Builder!' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:539:40 'PRIORITY_MIN: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:584:15 'setPriority(Int): Notification.Builder!' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/TotpService.kt:584:40 'PRIORITY_LOW: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:29:63 'VIBRATOR_SERVICE: String' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:234:39 'getter for systemUiVisibility: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:236:39 'SYSTEM_UI_FLAG_LIGHT_STATUS_BAR: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:238:40 'SYSTEM_UI_FLAG_LIGHT_STATUS_BAR: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:242:44 'SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:243:37 'SYSTEM_UI_FLAG_LAYOUT_STABLE: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:244:27 'setter for systemUiVisibility: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:249:39 'getter for systemUiVisibility: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:251:39 'SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:253:40 'SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/UiBridge.kt:255:27 'setter for systemUiVisibility: Int' is deprecated. Deprecated in Java
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/FileScreen.kt:144:39 Unnecessary non-null assertion (!!) on a non-null receiver of type String
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/FileScreen.kt:149:49 Unnecessary non-null assertion (!!) on a non-null receiver of type String
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/FileScreen.kt:258:46 Parameter 'onClick' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Icons.kt:40:13 Variable 'stroke' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Icons.kt:41:13 Variable 'fill' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Icons.kt:230:22 Parameter 'scope' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:265:9 Variable 'c' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:387:23 Parameter 'login' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:541:56 Parameter 'onOpenUser' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:603:5 Parameter 'onOpenUser' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:702:5 Parameter 'onBack' is never used
 
-> Task :app:compileDebugKotlin FAILED
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Icons.kt:36:32 Unresolved reference: size
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Markdown.kt:151:13 Functions which invoke @Composable functions must be marked with the @Composable annotation
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Markdown.kt:189:68 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/NativeMainActivity.kt:151:29 Unresolved reference: Spacer
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/RepoScreen.kt:305:55 @Composable invocations can only happen from the context of a @Composable function
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:100:29 Unresolved reference: asImageBitmap
+> Task :app:compileDebugJavaWithJavac
+Note: /home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/JsBridge.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
 
-FAILURE: Build failed with an exception.
+> Task :app:dexBuilderDebug
+> Task :app:mergeDebugGlobalSynthetics
+> Task :app:processDebugJavaRes
+> Task :app:mergeProjectDexDebug
+> Task :app:mergeDebugJavaResource
+> Task :app:packageDebug
+> Task :app:createDebugApkListingFileRedirect
+> Task :app:assembleDebug
 
-* What went wrong:
-Execution failed for task ':app:compileDebugKotlin'.
-> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
-   > Compilation error. See log for more details
-
-* Try:
-> Run with --info or --debug option to get more log output.
-> Run with --scan to get full insights.
-> Get more help at https://help.gradle.org.
-
-* Exception is:
-org.gradle.api.tasks.TaskExecutionException: Execution failed for task ':app:compileDebugKotlin'.
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.lambda$executeIfValid$1(ExecuteActionsTaskExecuter.java:149)
-	at org.gradle.internal.Try$Failure.ifSuccessfulOrElse(Try.java:282)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:147)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:135)
-	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
-	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
-	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
-	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
-	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:199)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
-	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:337)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:324)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:317)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
-	at org.gradle.execution.plan.DefaultPlanExecutor.process(DefaultPlanExecutor.java:116)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.executeWithServices(DefaultTaskExecutionGraph.java:138)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.execute(DefaultTaskExecutionGraph.java:123)
-	at org.gradle.execution.SelectedTaskExecutionAction.execute(SelectedTaskExecutionAction.java:35)
-	at org.gradle.execution.DryRunBuildExecutionAction.execute(DryRunBuildExecutionAction.java:51)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:54)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:43)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:199)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor.execute(BuildOperationFiringBuildWorkerExecutor.java:40)
-	at org.gradle.internal.build.DefaultBuildLifecycleController.lambda$executeTasks$10(DefaultBuildLifecycleController.java:264)
-	at org.gradle.internal.model.StateTransitionController.doTransition(StateTransitionController.java:266)
-	at org.gradle.internal.model.StateTransitionController.lambda$tryTransition$8(StateTransitionController.java:177)
-	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:44)
-	at org.gradle.internal.model.StateTransitionController.tryTransition(StateTransitionController.java:177)
-	at org.gradle.internal.build.DefaultBuildLifecycleController.executeTasks(DefaultBuildLifecycleController.java:255)
-	at org.gradle.internal.build.DefaultBuildWorkGraphController$DefaultBuildWorkGraph.runWork(DefaultBuildWorkGraphController.java:220)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:249)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:109)
-	at org.gradle.composite.internal.DefaultBuildController.doRun(DefaultBuildController.java:181)
-	at org.gradle.composite.internal.DefaultBuildController.access$000(DefaultBuildController.java:50)
-	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.run(DefaultBuildController.java:200)
-	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
-	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
-Caused by: org.gradle.workers.internal.DefaultWorkerExecutor$WorkExecutionException: A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
-	at org.gradle.workers.internal.DefaultWorkerExecutor$WorkItemExecution.waitForCompletion(DefaultWorkerExecutor.java:283)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.lambda$waitForItemsAndGatherFailures$2(DefaultAsyncWorkTracker.java:130)
-	at org.gradle.internal.Factories$1.create(Factories.java:31)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:321)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLocks(DefaultWorkerLeaseService.java:304)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withoutLock(DefaultWorkerLeaseService.java:309)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForItemsAndGatherFailures(DefaultAsyncWorkTracker.java:126)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForItemsAndGatherFailures(DefaultAsyncWorkTracker.java:92)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForAll(DefaultAsyncWorkTracker.java:78)
-	at org.gradle.internal.work.DefaultAsyncWorkTracker.waitForCompletion(DefaultAsyncWorkTracker.java:66)
-	at org.gradle.api.internal.tasks.execution.TaskExecution$3.run(TaskExecution.java:256)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:29)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$1.execute(DefaultBuildOperationRunner.java:26)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.run(DefaultBuildOperationRunner.java:47)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.run(DefaultBuildOperationExecutor.java:68)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeAction(TaskExecution.java:233)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeActions(TaskExecution.java:216)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.executeWithPreviousOutputFiles(TaskExecution.java:199)
-	at org.gradle.api.internal.tasks.execution.TaskExecution.execute(TaskExecution.java:166)
-	at org.gradle.internal.execution.steps.ExecuteStep.executeInternal(ExecuteStep.java:105)
-	at org.gradle.internal.execution.steps.ExecuteStep.access$000(ExecuteStep.java:44)
-	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:59)
-	at org.gradle.internal.execution.steps.ExecuteStep$1.call(ExecuteStep.java:56)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:199)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:56)
-	at org.gradle.internal.execution.steps.ExecuteStep.execute(ExecuteStep.java:44)
-	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:67)
-	at org.gradle.internal.execution.steps.RemovePreviousOutputsStep.execute(RemovePreviousOutputsStep.java:37)
-	at org.gradle.internal.execution.steps.CancelExecutionStep.execute(CancelExecutionStep.java:41)
-	at org.gradle.internal.execution.steps.TimeoutStep.executeWithoutTimeout(TimeoutStep.java:74)
-	at org.gradle.internal.execution.steps.TimeoutStep.execute(TimeoutStep.java:55)
-	at org.gradle.internal.execution.steps.CreateOutputsStep.execute(CreateOutputsStep.java:50)
-	at org.gradle.internal.execution.steps.CreateOutputsStep.execute(CreateOutputsStep.java:28)
-	at org.gradle.internal.execution.steps.CaptureStateAfterExecutionStep.executeDelegateBroadcastingChanges(CaptureStateAfterExecutionStep.java:100)
-	at org.gradle.internal.execution.steps.CaptureStateAfterExecutionStep.execute(CaptureStateAfterExecutionStep.java:72)
-	at org.gradle.internal.execution.steps.CaptureStateAfterExecutionStep.execute(CaptureStateAfterExecutionStep.java:50)
-	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:40)
-	at org.gradle.internal.execution.steps.ResolveInputChangesStep.execute(ResolveInputChangesStep.java:29)
-	at org.gradle.internal.execution.steps.BuildCacheStep.executeWithoutCache(BuildCacheStep.java:179)
-	at org.gradle.internal.execution.steps.BuildCacheStep.executeAndStoreInCache(BuildCacheStep.java:139)
-	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$executeWithCache$4(BuildCacheStep.java:106)
-	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$executeWithCache$5(BuildCacheStep.java:106)
-	at org.gradle.internal.Try$Success.map(Try.java:164)
-	at org.gradle.internal.execution.steps.BuildCacheStep.executeWithCache(BuildCacheStep.java:80)
-	at org.gradle.internal.execution.steps.BuildCacheStep.lambda$execute$0(BuildCacheStep.java:69)
-	at org.gradle.internal.Either$Left.fold(Either.java:115)
-	at org.gradle.internal.execution.caching.CachingState.fold(CachingState.java:59)
-	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:68)
-	at org.gradle.internal.execution.steps.BuildCacheStep.execute(BuildCacheStep.java:46)
-	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:36)
-	at org.gradle.internal.execution.steps.StoreExecutionStateStep.execute(StoreExecutionStateStep.java:25)
-	at org.gradle.internal.execution.steps.RecordOutputsStep.execute(RecordOutputsStep.java:36)
-	at org.gradle.internal.execution.steps.RecordOutputsStep.execute(RecordOutputsStep.java:22)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.executeBecause(SkipUpToDateStep.java:91)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.lambda$execute$2(SkipUpToDateStep.java:55)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:55)
-	at org.gradle.internal.execution.steps.SkipUpToDateStep.execute(SkipUpToDateStep.java:37)
-	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:65)
-	at org.gradle.internal.execution.steps.ResolveChangesStep.execute(ResolveChangesStep.java:36)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:37)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsFinishedStep.execute(MarkSnapshottingInputsFinishedStep.java:27)
-	at org.gradle.internal.execution.steps.ResolveCachingStateStep.execute(ResolveCachingStateStep.java:77)
-	at org.gradle.internal.execution.steps.ResolveCachingStateStep.execute(ResolveCachingStateStep.java:38)
-	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:94)
-	at org.gradle.internal.execution.steps.ValidateStep.execute(ValidateStep.java:49)
-	at org.gradle.internal.execution.steps.CaptureStateBeforeExecutionStep.execute(CaptureStateBeforeExecutionStep.java:71)
-	at org.gradle.internal.execution.steps.CaptureStateBeforeExecutionStep.execute(CaptureStateBeforeExecutionStep.java:45)
-	at org.gradle.internal.execution.steps.SkipEmptyWorkStep.executeWithNonEmptySources(SkipEmptyWorkStep.java:177)
-	at org.gradle.internal.execution.steps.SkipEmptyWorkStep.execute(SkipEmptyWorkStep.java:86)
-	at org.gradle.internal.execution.steps.SkipEmptyWorkStep.execute(SkipEmptyWorkStep.java:53)
-	at org.gradle.internal.execution.steps.RemoveUntrackedExecutionStateStep.execute(RemoveUntrackedExecutionStateStep.java:32)
-	at org.gradle.internal.execution.steps.RemoveUntrackedExecutionStateStep.execute(RemoveUntrackedExecutionStateStep.java:21)
-	at org.gradle.internal.execution.steps.legacy.MarkSnapshottingInputsStartedStep.execute(MarkSnapshottingInputsStartedStep.java:38)
-	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:36)
-	at org.gradle.internal.execution.steps.LoadPreviousExecutionStateStep.execute(LoadPreviousExecutionStateStep.java:23)
-	at org.gradle.internal.execution.steps.CleanupStaleOutputsStep.execute(CleanupStaleOutputsStep.java:75)
-	at org.gradle.internal.execution.steps.CleanupStaleOutputsStep.execute(CleanupStaleOutputsStep.java:41)
-	at org.gradle.internal.execution.steps.AssignWorkspaceStep.lambda$execute$0(AssignWorkspaceStep.java:32)
-	at org.gradle.api.internal.tasks.execution.TaskExecution$4.withWorkspace(TaskExecution.java:293)
-	at org.gradle.internal.execution.steps.AssignWorkspaceStep.execute(AssignWorkspaceStep.java:30)
-	at org.gradle.internal.execution.steps.AssignWorkspaceStep.execute(AssignWorkspaceStep.java:21)
-	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:37)
-	at org.gradle.internal.execution.steps.IdentityCacheStep.execute(IdentityCacheStep.java:27)
-	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:47)
-	at org.gradle.internal.execution.steps.IdentifyStep.execute(IdentifyStep.java:34)
-	at org.gradle.internal.execution.impl.DefaultExecutionEngine$1.execute(DefaultExecutionEngine.java:64)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.executeIfValid(ExecuteActionsTaskExecuter.java:146)
-	at org.gradle.api.internal.tasks.execution.ExecuteActionsTaskExecuter.execute(ExecuteActionsTaskExecuter.java:135)
-	at org.gradle.api.internal.tasks.execution.FinalizePropertiesTaskExecuter.execute(FinalizePropertiesTaskExecuter.java:46)
-	at org.gradle.api.internal.tasks.execution.ResolveTaskExecutionModeExecuter.execute(ResolveTaskExecutionModeExecuter.java:51)
-	at org.gradle.api.internal.tasks.execution.SkipTaskWithNoActionsExecuter.execute(SkipTaskWithNoActionsExecuter.java:57)
-	at org.gradle.api.internal.tasks.execution.SkipOnlyIfTaskExecuter.execute(SkipOnlyIfTaskExecuter.java:74)
-	at org.gradle.api.internal.tasks.execution.CatchExceptionTaskExecuter.execute(CatchExceptionTaskExecuter.java:36)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.executeTask(EventFiringTaskExecuter.java:77)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:55)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter$1.call(EventFiringTaskExecuter.java:52)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:199)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.api.internal.tasks.execution.EventFiringTaskExecuter.execute(EventFiringTaskExecuter.java:52)
-	at org.gradle.execution.plan.LocalTaskNodeExecutor.execute(LocalTaskNodeExecutor.java:42)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:337)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$InvokeNodeExecutorsAction.execute(DefaultTaskExecutionGraph.java:324)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:317)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph$BuildOperationAwareExecutionAction.execute(DefaultTaskExecutionGraph.java:303)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.execute(DefaultPlanExecutor.java:463)
-	at org.gradle.execution.plan.DefaultPlanExecutor$ExecutorWorker.run(DefaultPlanExecutor.java:380)
-	at org.gradle.execution.plan.DefaultPlanExecutor.process(DefaultPlanExecutor.java:116)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.executeWithServices(DefaultTaskExecutionGraph.java:138)
-	at org.gradle.execution.taskgraph.DefaultTaskExecutionGraph.execute(DefaultTaskExecutionGraph.java:123)
-	at org.gradle.execution.SelectedTaskExecutionAction.execute(SelectedTaskExecutionAction.java:35)
-	at org.gradle.execution.DryRunBuildExecutionAction.execute(DryRunBuildExecutionAction.java:51)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:54)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor$ExecuteTasks.call(BuildOperationFiringBuildWorkerExecutor.java:43)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:199)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.execution.BuildOperationFiringBuildWorkerExecutor.execute(BuildOperationFiringBuildWorkerExecutor.java:40)
-	at org.gradle.internal.build.DefaultBuildLifecycleController.lambda$executeTasks$10(DefaultBuildLifecycleController.java:264)
-	at org.gradle.internal.model.StateTransitionController.doTransition(StateTransitionController.java:266)
-	at org.gradle.internal.model.StateTransitionController.lambda$tryTransition$8(StateTransitionController.java:177)
-	at org.gradle.internal.work.DefaultSynchronizer.withLock(DefaultSynchronizer.java:44)
-	at org.gradle.internal.model.StateTransitionController.tryTransition(StateTransitionController.java:177)
-	at org.gradle.internal.build.DefaultBuildLifecycleController.executeTasks(DefaultBuildLifecycleController.java:255)
-	at org.gradle.internal.build.DefaultBuildWorkGraphController$DefaultBuildWorkGraph.runWork(DefaultBuildWorkGraphController.java:220)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:249)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:109)
-	at org.gradle.composite.internal.DefaultBuildController.doRun(DefaultBuildController.java:181)
-	at org.gradle.composite.internal.DefaultBuildController.access$000(DefaultBuildController.java:50)
-	at org.gradle.composite.internal.DefaultBuildController$BuildOpRunnable.run(DefaultBuildController.java:200)
-	at org.gradle.internal.concurrent.ExecutorPolicy$CatchAndRecordFailures.onExecute(ExecutorPolicy.java:64)
-	at org.gradle.internal.concurrent.AbstractManagedExecutor$1.run(AbstractManagedExecutor.java:47)
-Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilation error. See log for more details
-	at org.jetbrains.kotlin.gradle.tasks.TasksUtilsKt.throwExceptionIfCompilationFailed(tasksUtils.kt:20)
-	at org.jetbrains.kotlin.compilerRunner.GradleKotlinCompilerWork.run(GradleKotlinCompilerWork.kt:141)
-	at org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction.execute(GradleCompilerRunnerWithWorkers.kt:73)
-	at org.gradle.workers.internal.DefaultWorkerServer.execute(DefaultWorkerServer.java:63)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:66)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1$1.create(NoIsolationWorkerFactory.java:62)
-	at org.gradle.internal.classloader.ClassLoaderUtils.executeInClassloader(ClassLoaderUtils.java:100)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.lambda$execute$0(NoIsolationWorkerFactory.java:62)
-	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:44)
-	at org.gradle.workers.internal.AbstractWorker$1.call(AbstractWorker.java:41)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:204)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$CallableBuildOperationWorker.execute(DefaultBuildOperationRunner.java:199)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:66)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner$2.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:157)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.execute(DefaultBuildOperationRunner.java:59)
-	at org.gradle.internal.operations.DefaultBuildOperationRunner.call(DefaultBuildOperationRunner.java:53)
-	at org.gradle.internal.operations.DefaultBuildOperationExecutor.call(DefaultBuildOperationExecutor.java:73)
-	at org.gradle.workers.internal.AbstractWorker.executeWrappedInBuildOperation(AbstractWorker.java:41)
-	at org.gradle.workers.internal.NoIsolationWorkerFactory$1.execute(NoIsolationWorkerFactory.java:59)
-	at org.gradle.workers.internal.DefaultWorkerExecutor.lambda$submitWork$0(DefaultWorkerExecutor.java:170)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runExecution(DefaultConditionalExecutionQueue.java:187)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.access$700(DefaultConditionalExecutionQueue.java:120)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner$1.run(DefaultConditionalExecutionQueue.java:162)
-	at org.gradle.internal.Factories$1.create(Factories.java:31)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.withLocks(DefaultWorkerLeaseService.java:249)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:109)
-	at org.gradle.internal.work.DefaultWorkerLeaseService.runAsWorkerThread(DefaultWorkerLeaseService.java:114)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.runBatch(DefaultConditionalExecutionQueue.java:157)
-	at org.gradle.internal.work.DefaultConditionalExecutionQueue$ExecutionRunner.run(DefaultConditionalExecutionQueue.java:126)
-	... 2 more
-
-
-BUILD FAILED in 1m 31s
-27 actionable tasks: 26 executed, 1 from cache
+BUILD SUCCESSFUL in 2m 39s
+35 actionable tasks: 34 executed, 1 from cache
