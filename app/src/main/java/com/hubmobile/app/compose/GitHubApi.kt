@@ -37,6 +37,8 @@ data class RepoInfo(
     val private: Boolean,
     val topics: List<String>
 ) {
+    /** 仓库名（去掉 owner 前缀）。列表里显示 owner/name，这里单独要 name */
+    val name: String get() = fullName.substringAfterLast('/')
     companion object {
         fun from(o: JSONObject): RepoInfo {
             val owner = o.optJSONObject("owner")

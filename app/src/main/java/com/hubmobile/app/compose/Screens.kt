@@ -53,6 +53,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.hubmobile.app.SecurePrefs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /*
@@ -166,7 +168,7 @@ fun HomeScreen(
 
     fun load() {
         loading = true; err = null
-        kotlinx.coroutines.MainScope().launch {
+        MainScope().launch {
             try {
                 me = withContext(Dispatchers.IO) { GitHubApi.me(ctx) }
                 val login = me?.login
@@ -205,11 +207,6 @@ fun HomeScreen(
                     selectedTabIndex = tab,
                     containerColor = HubColors.Surface,
                     contentColor = HubColors.Accent,
-                    indicator = { pos ->
-                        TabRowDefaults.SecondaryIndicator(
-                            Modifier.tabIndicatorOffset(pos), color = HubColors.Accent
-                        )
-                    }
                 ) {
                     Tab(tab == 0, { tab = 0 }) { Text("我的仓库", fontSize = 13.sp) }
                     Tab(tab == 1, { tab = 1 }) { Text("Star", fontSize = 13.sp) }
@@ -247,7 +244,7 @@ fun SearchScreen(
     fun search() {
         if (q.isBlank()) return
         loading = true; err = null
-        kotlinx.coroutines.MainScope().launch {
+        MainScope().launch {
             try {
                 result = withContext(Dispatchers.IO) { GitHubApi.searchRepos(ctx, q) }
                 loading = false
