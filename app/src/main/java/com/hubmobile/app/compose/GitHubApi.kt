@@ -619,10 +619,10 @@ object GitHubApi {
                 val merged = !o.isNull("merged_at") && o.safe("merged_at").isNotBlank()
                 return PrInfo(
                     number = o.optInt("number"),
-                    title = o.str("title"),
-                    state = o.str("state"),
-                    user = o.optJSONObject("user")?.str("login") ?: "",
-                    createdAt = o.str("created_at"),
+                    title = o.safe("title"),
+                    state = o.safe("state"),
+                    user = o.optJSONObject("user")?.safe("login") ?: "",
+                    createdAt = o.safe("created_at"),
                     merged = merged,
                     draft = o.optBoolean("draft"),
                     comments = o.optInt("comments")
@@ -657,15 +657,15 @@ object GitHubApi {
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
             val aa = o.optJSONArray("assets")
-            val as = ArrayList<AssetInfo>()
+            val assets = ArrayList<AssetInfo>()
             if (aa != null) for (j in 0 until aa.length()) {
                 val a = aa.getJSONObject(j)
-                as.add(AssetInfo(a.str("name"), a.optLong("size"),
-                    a.str("browser_download_url"), a.optInt("download_count")))
+                assets.add(AssetInfo(a.safe("name"), a.optLong("size"),
+                    a.safe("browser_download_url"), a.optInt("download_count")))
             }
-            out.add(ReleaseInfo(o.optLong("id"), o.str("tag_name"), o.str("name"),
-                o.str("body"), o.str("published_at"), o.optBoolean("draft"),
-                o.optBoolean("prerelease"), as))
+            out.add(ReleaseInfo(o.optLong("id"), o.safe("tag_name"), o.safe("name"),
+                o.safe("body"), o.safe("published_at"), o.optBoolean("draft"),
+                o.optBoolean("prerelease"), assets))
         }
         return out
     }
@@ -679,11 +679,11 @@ object GitHubApi {
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
             out.add(CommitInfo(
-                sha = o.str("sha"),
-                message = o.optJSONObject("commit")?.str("message") ?: "",
-                author = o.optJSONObject("author")?.str("login")
-                    ?: o.optJSONObject("commit")?.optJSONObject("author")?.str("name") ?: "",
-                date = o.optJSONObject("commit")?.optJSONObject("author")?.str("date") ?: ""
+                sha = o.safe("sha"),
+                message = o.optJSONObject("commit")?.safe("message") ?: "",
+                author = o.optJSONObject("author")?.safe("login")
+                    ?: o.optJSONObject("commit")?.optJSONObject("author")?.safe("name") ?: "",
+                date = o.optJSONObject("commit")?.optJSONObject("author")?.safe("date") ?: ""
             ))
         }
         return out
@@ -694,7 +694,7 @@ object GitHubApi {
         val out = ArrayList<ContributorInfo>()
         for (i in 0 until arr.length()) {
             val o = arr.getJSONObject(i)
-            out.add(ContributorInfo(o.str("login"), o.str("avatar_url"),
+            out.add(ContributorInfo(o.safe("login"), o.safe("avatar_url"),
                 o.optInt("contributions")))
         }
         return out
@@ -714,7 +714,7 @@ object GitHubApi {
         val out = ArrayList<WorkflowInfo>()
         for (i in 0 until arr.length()) {
             val w = arr.getJSONObject(i)
-            out.add(WorkflowInfo(w.optLong("id"), w.str("name"), w.str("state"), w.str("path")))
+            out.add(WorkflowInfo(w.optLong("id"), w.safe("name"), w.safe("state"), w.safe("path")))
         }
         return out
     }
@@ -726,9 +726,9 @@ object GitHubApi {
         val out = ArrayList<RunInfo>()
         for (i in 0 until arr.length()) {
             val r = arr.getJSONObject(i)
-            out.add(RunInfo(r.optLong("id"), r.str("name"), r.str("status"),
-                r.str("conclusion"), r.str("head_branch"), r.str("event"),
-                r.str("created_at"), r.optInt("run_number")))
+            out.add(RunInfo(r.optLong("id"), r.safe("name"), r.safe("status"),
+                r.safe("conclusion"), r.safe("head_branch"), r.safe("event"),
+                r.safe("created_at"), r.optInt("run_number")))
         }
         return out
     }
