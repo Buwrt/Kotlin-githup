@@ -67,6 +67,10 @@ class ComposeHostActivity : ComponentActivity() {
                     },
                     onOpenInWeb = {
                         openInWeb("https://github.com/$owner/$name", finishAfter = false)
+                    },
+                    // 这个旧入口不再有 Issues 页面可去，落地成直接开网页
+                    onOpenIssues = {
+                        openInWeb("https://github.com/$owner/$name/issues", finishAfter = false)
                     }
                 )
             }
