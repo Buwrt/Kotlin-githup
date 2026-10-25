@@ -35,6 +35,7 @@ data class RepoInfo(
     val defaultBranch: String,
     val updatedAt: String,
     val private: Boolean,
+    val fork: Boolean = false,
     val topics: List<String>
 ) {
     /** 仓库名（去掉 owner 前缀）。列表里显示 owner/name，这里单独要 name */
@@ -65,6 +66,7 @@ data class RepoInfo(
                 defaultBranch = o.safe("default_branch"),
                 updatedAt = o.safe("updated_at"),
                 private = o.optBoolean("private"),
+                fork = o.optBoolean("fork"),
                 topics = topics
             )
         }
@@ -371,4 +373,130 @@ object GitHubApi {
 
     /** 2026-10-20T08:11:00Z → 2026-10-20 */
     fun shortDate(iso: String): String = if (iso.length >= 10) iso.substring(0, 10) else iso
+
+    /* ---------- 与 api.js 对齐的格式化 ---------- */
+
+    /**
+     * 对齐 api.js 的 U.num()：1000000 → "1m"，1000 → "1.2k"，且去掉 ".0"。
+     * 之前自己写的 compact() 用的是 "1.2k / 1.0M"，与网页版不一致。
+     */
+    fun num(n: Int): String {
+        if (n >= 1_000_000) {
+            val v = (n / 1_000_000.0).let { String.format("%.1f", it) }
+            return (if (v.endsWith(".0")) v.dropLast(2) else v) + "m"
+        }
+        if (n >= 1000) {
+            val v = (n / 1000.0).let { String.format("%.1f", it) }
+            return (if (v.endsWith(".0")) v.dropLast(2) else v) + "k"
+        }
+        return n.toString()
+    }
+
+    /** 对齐 api.js 的 U.timeAgo() */
+    fun timeAgo(iso: String): String {
+        if (iso.isBlank()) return ""
+        val t = try {
+            java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US)
+                .apply { timeZone = java.util.TimeZone.getTimeZone("UTC") }
+                .parse(iso)?.time ?: return ""
+        } catch (e: Throwable) { return "" }
+        val sec = ((System.currentTimeMillis() - t) / 1000).toInt()
+        return when {
+            sec < 45 -> "刚刚"
+            sec < 3600 -> "${sec / 60} 分钟前"
+            sec < 86400 -> "${sec / 3600} 小时前"
+            sec < 2592000 -> "${sec / 86400} 天前"
+            sec < 31536000 -> "${sec / 2592000} 个月前"
+            else -> "${sec / 31536000} 年前"
+        }
+    }
+
+    /** 对齐 api.js 的 U.langColor()：语言色点 */
+    fun langColor(lang: String): Long {
+        val m = mapOf(
+            "JavaScript" to 0xFFF1E05A, "TypeScript" to 0xFF3178C6, "Python" to 0xFF3572A5,
+            "Java" to 0xFFB07219, "Kotlin" to 0xFFA97BFF, "Go" to 0xFF00ADD8,
+            "Rust" to 0xFFDEA584, "C++" to 0xFFF34B7D, "C" to 0xFF555555,
+            "C#" to 0xFF178600, "Ruby" to 0xFF701516, "PHP" to 0xFF4F5D95,
+            "Swift" to 0xFFF05138, "Dart" to 0xFF00B4AB, "HTML" to 0xFFE34C26,
+            "CSS" to 0xFF563D7C, "SCSS" to 0xFFC6538C, "Vue" to 0xFF41B883,
+            "Shell" to 0xFF89E051, "Lua" to 0xFF000080, "Scala" to 0xFFC22D40,
+            "Perl" to 0xFF0298C3, "R" to 0xFF198CE7, "Objective-C" to 0xFF438EFF,
+            "Dockerfile" to 0xFF384D54, "Makefile" to 0xFF427819,
+            "Jupyter Notebook" to 0xFFDA5B0B, "Elixir" to 0xFF6E4A7E,
+            "Haskell" to 0xFF5E5086, "Julia" to 0xFFA270BA, "Zig" to 0xFFEC915C,
+            "Vim Script" to 0xFF199F4B, "PowerShell" to 0xFF012456,
+            "Assembly" to 0xFF6E4C13, "Nix" to 0xFF7E7EFF
+        )
+        return m[lang] ?: 0xFF8B949E
+    }
+
+    /* ---------- 通知 ---------- */
+
+    data class NotifInfo(
+        val id: String,
+        val title: String,
+        val repoFullName: String,
+        val reason: String,
+        val unread: Boolean,
+        val updatedAt: String,
+        /** subject url 里的编号，用于拼网页链接 */
+        val subjectUrl: String,
+        val type: String
+    ) {
+        companion object {
+            fun from(o: JSONObject): NotifInfo = NotifInfo(
+                id = o.safe("id"),
+                title = o.optJSONObject("subject")?.safe("title") ?: "",
+                repoFullName = o.optJSONObject("repository")?.safe("full_name") ?: "",
+                reason = o.safe("reason"),
+                unread = o.optBoolean("unread"),
+                updatedAt = o.safe("updated_at"),
+                subjectUrl = o.optJSONObject("subject")?.safe("url") ?: "",
+                type = o.optJSONObject("subject")?.safe("type") ?: ""
+            )
+        }
+    }
+
+    fun notifications(ctx: Context): List<NotifInfo> {
+        val s = get(ctx, "$API/notifications?per_page=50")
+        val arr = org.json.JSONArray(s)
+        val out = ArrayList<NotifInfo>()
+        for (i in 0 until arr.length()) out.add(NotifInfo.from(arr.getJSONObject(i)))
+        return out
+    }
+
+    /** 通知的网页链接：subject.url 是 API 地址，要换成 html 的 */
+    fun notifWebUrl(n: NotifInfo): String {
+        // https://api.github.com/repos/o/r/issues/12 → https://github.com/o/r/issues/12
+        val u = n.subjectUrl.replace("https://api.github.com/repos/", "https://github.com/")
+        return if (u.startsWith("http")) u else "https://github.com/${n.repoFullName}"
+    }
+
+    /* ---------- 探索（trending） ---------- */
+
+    /**
+     * 探索页：与网页版 P.explore 同参数 ——
+     *   range=daily 取最近 7 天，weekly 30 天，monthly 120 天
+     *   q = stars:>N pushed:>日期 [+ language:X]，按 stars 排序
+     */
+    fun trending(ctx: Context, range: String, lang: String): List<RepoInfo> {
+        val d = java.util.Calendar.getInstance()
+        when (range) {
+            "weekly" -> d.add(java.util.Calendar.DAY_OF_MONTH, -30)
+            "monthly" -> d.add(java.util.Calendar.DAY_OF_MONTH, -120)
+            else -> d.add(java.util.Calendar.DAY_OF_MONTH, -7)
+        }
+        val since = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(d.time)
+        var q = "stars:>20000 pushed:>$since"
+        if (lang.isNotBlank()) q += " language:" + lang
+        val url = "$API/search/repositories?q=" +
+            java.net.URLEncoder.encode(q, "UTF-8") +
+            "&sort=stars&order=desc&per_page=30"
+        val o = JSONObject(get(ctx, url))
+        val arr = o.optJSONArray("items") ?: org.json.JSONArray()
+        val out = ArrayList<RepoInfo>()
+        for (i in 0 until arr.length()) out.add(RepoInfo.from(arr.getJSONObject(i)))
+        return out
+    }
 }

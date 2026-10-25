@@ -148,7 +148,7 @@ private fun parseMarkdown(src: String): List<MdBlock> {
 }
 
 /** 行内标记 → AnnotatedString。链接用字符串注解挂上去，配合 ClickableText 可点。 */
-private fun buildInline(text: String): AnnotatedString = buildAnnotatedString {
+private fun buildInline(text: String, codeBg: Color = HubColors.CodeBgDark): AnnotatedString = buildAnnotatedString {
     val bt = "\u0060"           // 行内代码
     var i = 0
     while (i < text.length) {
@@ -157,7 +157,7 @@ private fun buildInline(text: String): AnnotatedString = buildAnnotatedString {
                 val end = text.indexOf(bt, i + 1)
                 if (end > i + 1) {
                     pushStyle(SpanStyle(fontFamily = FontFamily.Monospace,
-                        background = HubColors.SurfaceHi, fontSize = 12.sp))
+                        background = codeBg, fontSize = 12.sp))
                     append(text.substring(i + 1, end))
                     pop(); i = end + 1
                 } else { append(text[i]); i++ }
@@ -186,7 +186,7 @@ private fun buildInline(text: String): AnnotatedString = buildAnnotatedString {
                         val label = text.substring(i + 1, mid)
                         val url = text.substring(mid + 2, end)
                         pushStringAnnotation("URL", url)
-                        pushStyle(SpanStyle(color = HubColors.Accent,
+                        pushStyle(SpanStyle(color = LocalHubColors.current.accent,
                             textDecoration = TextDecoration.Underline))
                         append(label)
                         pop(); pop(); i = end + 1
@@ -222,31 +222,31 @@ fun MarkdownText(
                         4 -> 14.sp; 5 -> 13.sp; else -> 12.sp
                     }
                     Text(
-                        buildInline(b.text),
-                        color = HubColors.Text, fontSize = size,
+                        buildInline(b.text, LocalHubColors.current.codeBg),
+                        color = LocalHubColors.current.fg, fontSize = size,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.padding(vertical = 6.dp)
                     )
                     if (b.level <= 2) {
                         Spacer(Modifier.height(2.dp).fillMaxWidth()
-                            .background(HubColors.Border))
+                            .background(LocalHubColors.current.border))
                     }
                 }
                 is MdBlock.Code -> {
                     val scroll = rememberScrollState()
                     Box(
                         Modifier.fillMaxWidth().padding(vertical = 6.dp)
-                            .background(HubColors.SurfaceHi, RoundedCornerShape(6.dp))
+                            .background(LocalHubColors.current.bgHi, RoundedCornerShape(6.dp))
                             .padding(10.dp)
                     ) {
                         Column(Modifier.horizontalScroll(scroll)) {
                             if (b.lang.isNotBlank()) {
-                                Text(b.lang, color = HubColors.Muted, fontSize = 10.sp,
+                                Text(b.lang, color = LocalHubColors.current.fgMuted, fontSize = 10.sp,
                                     fontFamily = FontFamily.Monospace)
                                 Spacer(Modifier.height(4.dp))
                             }
                             Text(
-                                b.code, color = HubColors.Text, fontSize = 12.sp,
+                                b.code, color = LocalHubColors.current.fg, fontSize = 12.sp,
                                 fontFamily = FontFamily.Monospace,
                                 style = TextStyle(lineHeight = 17.sp)
                             )
@@ -256,10 +256,10 @@ fun MarkdownText(
                 is MdBlock.Quote -> {
                     Box(
                         Modifier.fillMaxWidth().padding(vertical = 5.dp)
-                            .background(HubColors.Surface, RoundedCornerShape(4.dp))
+                            .background(LocalHubColors.current.bg, RoundedCornerShape(4.dp))
                             .padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
-                        Text(buildInline(b.text), color = HubColors.Muted, fontSize = 13.sp)
+                        Text(buildInline(b.text, LocalHubColors.current.codeBg), color = LocalHubColors.current.fgMuted, fontSize = 13.sp)
                     }
                 }
                 is MdBlock.Bullet -> {
@@ -268,9 +268,9 @@ fun MarkdownText(
                             Text(
                                 buildAnnotatedString {
                                     append(if (b.ordered) "${idx + 1}. " else "• ")
-                                    append(buildInline(it))
+                                    append(buildInline(it, LocalHubColors.current.codeBg))
                                 },
-                                color = HubColors.Text, fontSize = 13.sp,
+                                color = LocalHubColors.current.fg, fontSize = 13.sp,
                                 modifier = Modifier.padding(vertical = 2.dp)
                             )
                         }
@@ -278,24 +278,24 @@ fun MarkdownText(
                 }
                 is MdBlock.Image -> {
                     Text("[图片] ${b.alt.ifBlank { b.url }}",
-                        color = HubColors.Muted, fontSize = 12.sp,
+                        color = LocalHubColors.current.fgMuted, fontSize = 12.sp,
                         modifier = Modifier.padding(vertical = 4.dp))
                 }
                 MdBlock.Rule -> {
                     Spacer(Modifier.height(8.dp))
-                    Spacer(Modifier.height(1.dp).fillMaxWidth().background(HubColors.Border))
+                    Spacer(Modifier.height(1.dp).fillMaxWidth().background(LocalHubColors.current.border))
                     Spacer(Modifier.height(8.dp))
                 }
                 is MdBlock.Para -> {
-                    val ann = buildInline(b.text)
+                    val ann = buildInline(b.text, LocalHubColors.current.codeBg)
                     if (onLink == null) {
-                        Text(ann, color = HubColors.Text, fontSize = 13.sp,
+                        Text(ann, color = LocalHubColors.current.fg, fontSize = 13.sp,
                             modifier = Modifier.padding(vertical = 4.dp))
                     } else {
                         ClickableText(
                             ann,
                             style = androidx.compose.ui.text.TextStyle(
-                                color = HubColors.Text, fontSize = 13.sp),
+                                color = LocalHubColors.current.fg, fontSize = 13.sp),
                             modifier = Modifier.padding(vertical = 4.dp),
                             onClick = { pos ->
                                 ann.getStringAnnotations("URL", pos, pos)

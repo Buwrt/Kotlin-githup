@@ -161,8 +161,8 @@ fun RepoScreen(
                     TextButton(onClick = onOpenInWeb) { Text("网页版") }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = HubColors.Surface,
-                    titleContentColor = HubColors.Text
+                    containerColor = LocalHubColors.current.bg,
+                    titleContentColor = LocalHubColors.current.fg
                 )
             )
         }
@@ -171,7 +171,7 @@ fun RepoScreen(
             when {
                 // 首次加载且还没有仓库信息
                 loading && repo == null -> Box(Modifier.fillMaxSize(), Alignment.Center) {
-                    CircularProgressIndicator(color = HubColors.Accent)
+                    CircularProgressIndicator(color = LocalHubColors.current.accent)
                 }
                 err != null && repo == null -> ErrorBox(err!!) {
                     loading = true; err = null
@@ -214,7 +214,7 @@ fun RepoScreen(
                                 Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
                                     CircularProgressIndicator(
                                         Modifier.size(20.dp),
-                                        color = HubColors.Accent
+                                        color = LocalHubColors.current.accent
                                     )
                                 }
                             }
@@ -224,7 +224,7 @@ fun RepoScreen(
                                     if (e.isDir) scope.launch { loadDir(e.path) }
                                     else onOpenFile(e.path, branch)
                                 }
-                                Divider(color = HubColors.Border, thickness = 0.5.dp)
+                                Divider(color = LocalHubColors.current.border, thickness = 0.5.dp)
                             }
                         }
                     }
@@ -248,21 +248,21 @@ private fun RepoHeader(r: RepoInfo, avatar: Bitmap?) {
             }
             Text(
                 r.fullName,
-                color = HubColors.Text,
+                color = LocalHubColors.current.fg,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp
             )
             if (r.private) {
                 Spacer(Modifier.width(8.dp))
                 Surface(
-                    color = HubColors.SurfaceHi,
+                    color = LocalHubColors.current.bgHi,
                     shape = RoundedCornerShape(10.dp)
                 ) {
                     Text(
                         "Private",
                         Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                         fontSize = 10.sp,
-                        color = HubColors.Muted
+                        color = LocalHubColors.current.fgMuted
                     )
                 }
             }
@@ -270,7 +270,7 @@ private fun RepoHeader(r: RepoInfo, avatar: Bitmap?) {
 
         if (r.description.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
-            Text(r.description, color = HubColors.Muted, fontSize = 13.sp)
+            Text(r.description, color = LocalHubColors.current.fgMuted, fontSize = 13.sp)
         }
 
         if (r.topics.isNotEmpty()) {
@@ -278,12 +278,12 @@ private fun RepoHeader(r: RepoInfo, avatar: Bitmap?) {
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 r.topics.take(6).forEach { t ->
                     Surface(
-                        color = HubColors.Accent.copy(alpha = 0.15f),
+                        color = LocalHubColors.current.accent.copy(alpha = 0.15f),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text(
                             t, Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
-                            fontSize = 11.sp, color = HubColors.Accent
+                            fontSize = 11.sp, color = LocalHubColors.current.accent
                         )
                     }
                 }
@@ -302,28 +302,28 @@ private fun RepoHeader(r: RepoInfo, avatar: Bitmap?) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (r.language.isNotBlank()) {
                 Canvas(Modifier.size(10.dp)) {
-                    drawCircle(color = HubColors.Accent, radius = size.minDimension / 2f)
+                    drawCircle(color = LocalHubColors.current.accent, radius = size.minDimension / 2f)
                 }
                 Spacer(Modifier.width(6.dp))
-                Text(r.language, color = HubColors.Muted, fontSize = 12.sp)
+                Text(r.language, color = LocalHubColors.current.fgMuted, fontSize = 12.sp)
                 Spacer(Modifier.width(14.dp))
             }
             if (r.license.isNotBlank() && r.license != "NOASSERTION") {
-                Text(r.license, color = HubColors.Muted, fontSize = 12.sp)
+                Text(r.license, color = LocalHubColors.current.fgMuted, fontSize = 12.sp)
                 Spacer(Modifier.width(14.dp))
             }
-            Text("更新于 ${GitHubApi.shortDate(r.updatedAt)}", color = HubColors.Muted, fontSize = 12.sp)
+            Text("更新于 ${GitHubApi.shortDate(r.updatedAt)}", color = LocalHubColors.current.fgMuted, fontSize = 12.sp)
         }
     }
-    Divider(color = HubColors.Border, thickness = 0.5.dp)
+    Divider(color = LocalHubColors.current.border, thickness = 0.5.dp)
 }
 
 @Composable
 private fun StatCell(value: String, label: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(value, color = HubColors.Text, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+        Text(value, color = LocalHubColors.current.fg, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.width(4.dp))
-        Text(label, color = HubColors.Muted, fontSize = 12.sp)
+        Text(label, color = LocalHubColors.current.fgMuted, fontSize = 12.sp)
         Spacer(Modifier.width(16.dp))
     }
 }
@@ -357,13 +357,13 @@ private fun PathBar(path: String, onGo: (String) -> Unit) {
         Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text("根目录", color = HubColors.Accent, fontSize = 12.sp,
+        Text("根目录", color = LocalHubColors.current.accent, fontSize = 12.sp,
             modifier = Modifier.clickable { onGo("") })
         parts.forEachIndexed { i, p ->
             acc = if (acc.isEmpty()) p else "$acc/$p"
             val target = acc
-            Text(" / ", color = HubColors.Muted, fontSize = 12.sp)
-            Text(p, color = if (i == parts.size - 1) HubColors.Muted else HubColors.Accent,
+            Text(" / ", color = LocalHubColors.current.fgMuted, fontSize = 12.sp)
+            Text(p, color = if (i == parts.size - 1) LocalHubColors.current.fgMuted else LocalHubColors.current.accent,
                 fontSize = 12.sp, modifier = Modifier.clickable { onGo(target) })
         }
     }
@@ -381,17 +381,17 @@ private fun EntryRow(e: ContentEntry, onClick: () -> Unit) {
         Spacer(Modifier.width(12.dp))
         Text(
             e.name,
-            color = HubColors.Text,
+            color = LocalHubColors.current.fg,
             fontSize = 14.sp,
             modifier = Modifier.weight(1f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
         if (!e.isDir && e.size > 0) {
-            Text(GitHubApi.humanSize(e.size), color = HubColors.Muted, fontSize = 11.sp)
+            Text(GitHubApi.humanSize(e.size), color = LocalHubColors.current.fgMuted, fontSize = 11.sp)
             Spacer(Modifier.width(8.dp))
         }
-        if (e.isDir) Text("›", color = HubColors.Muted, fontSize = 18.sp)
+        if (e.isDir) Text("›", color = LocalHubColors.current.fgMuted, fontSize = 18.sp)
     }
 }
 
@@ -402,7 +402,7 @@ private fun EntryRow(e: ContentEntry, onClick: () -> Unit) {
  */
 @Composable
 private fun EntryIcon(isDir: Boolean) {
-    val c = if (isDir) HubColors.Accent else HubColors.Muted
+    val c = if (isDir) LocalHubColors.current.accent else LocalHubColors.current.fgMuted
     Canvas(Modifier.size(20.dp)) {
         val r = CornerRadius(2.dp.toPx(), 2.dp.toPx())
         if (isDir) {
@@ -433,10 +433,10 @@ private fun EntryIcon(isDir: Boolean) {
 private fun ErrorBox(msg: String, onRetry: () -> Unit) {
     Box(Modifier.fillMaxSize(), Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(msg, color = HubColors.Muted, fontSize = 13.sp,
+            Text(msg, color = LocalHubColors.current.fgMuted, fontSize = 13.sp,
                 modifier = Modifier.padding(horizontal = 32.dp))
             Spacer(Modifier.height(12.dp))
-            TextButton(onClick = onRetry) { Text("重试", color = HubColors.Accent) }
+            TextButton(onClick = onRetry) { Text("重试", color = LocalHubColors.current.accent) }
         }
     }
 }

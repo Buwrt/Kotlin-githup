@@ -102,14 +102,14 @@ fun FileScreen(
             title = {
                 Column {
                     Text(path.substringAfterLast('/'), maxLines = 1, fontSize = 14.sp,
-                        color = HubColors.Text)
-                    Text(branch, fontSize = 10.sp, color = HubColors.Muted)
+                        color = LocalHubColors.current.fg)
+                    Text(branch, fontSize = 10.sp, color = LocalHubColors.current.fgMuted)
                 }
             },
             navigationIcon = {
                 TextButton(onClick = onBack) {
                     Text("‹", fontSize = 26.sp, fontWeight = FontWeight.Light,
-                        color = HubColors.Accent)
+                        color = LocalHubColors.current.accent)
                 }
             },
             actions = {
@@ -117,16 +117,16 @@ fun FileScreen(
                     onOpenWeb("https://github.com/$owner/$name/blob/$branch/${path.trim('/')}")
                 }) { Text("浏览器", fontSize = 12.sp) }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = HubColors.Surface)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = LocalHubColors.current.bg)
         )
-        Divider(color = HubColors.Border, thickness = 0.5.dp)
+        Divider(color = LocalHubColors.current.border, thickness = 0.5.dp)
 
         when {
             loading -> CenteredLoading()
             err != null -> CenteredText(err!!) {
                 TextButton(onClick = {
                     onOpenWeb("https://github.com/$owner/$name/blob/$branch/${path.trim('/')}")
-                }) { Text("用浏览器打开", color = HubColors.Accent) }
+                }) { Text("用浏览器打开", color = LocalHubColors.current.accent) }
             }
             else -> {
                 val f = fc!!
@@ -136,7 +136,7 @@ fun FileScreen(
                     ) {
                         TextButton(onClick = {
                             onOpenWeb("https://github.com/$owner/$name/blob/$branch/${path.trim('/')}")
-                        }) { Text("用浏览器打开", color = HubColors.Accent) }
+                        }) { Text("用浏览器打开", color = LocalHubColors.current.accent) }
                     }
                     path.substringAfterLast('.').lowercase() in setOf("md", "markdown") ->
                         Box(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
@@ -171,13 +171,13 @@ private fun PlainTextView(text: String) {
                 Row {
                     Text(
                         String.format("%${gutter}d", idx + 1),
-                        color = HubColors.Border, fontSize = 11.sp,
+                        color = LocalHubColors.current.border, fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace,
                         modifier = Modifier.width((gutter * 7 + 10).dp)
                     )
                     Text(
                         ln.ifEmpty { " " },
-                        color = HubColors.Text, fontSize = 12.sp,
+                        color = LocalHubColors.current.fg, fontSize = 12.sp,
                         fontFamily = FontFamily.Monospace
                     )
                 }
@@ -217,17 +217,17 @@ fun IssuesScreen(
 
     Column(Modifier.fillMaxSize()) {
         TopAppBar(
-            title = { Text("Issues", fontSize = 15.sp, color = HubColors.Text) },
+            title = { Text("Issues", fontSize = 15.sp, color = LocalHubColors.current.fg) },
             navigationIcon = {
                 TextButton(onClick = onBack) {
                     Text("‹", fontSize = 26.sp, fontWeight = FontWeight.Light,
-                        color = HubColors.Accent)
+                        color = LocalHubColors.current.accent)
                 }
             },
-            colors = TopAppBarDefaults.topAppBarColors(containerColor = HubColors.Surface)
+            colors = TopAppBarDefaults.topAppBarColors(containerColor = LocalHubColors.current.bg)
         )
-        TabRow(selectedTabIndex = tab, containerColor = HubColors.Surface,
-            contentColor = HubColors.Accent) {
+        TabRow(selectedTabIndex = tab, containerColor = LocalHubColors.current.bg,
+            contentColor = LocalHubColors.current.accent) {
             Tab(tab == 0, { tab = 0 }) { Text("开启 ${open.size}", fontSize = 12.sp) }
             Tab(tab == 1, { tab = 1 }) { Text("已关闭 ${closed.size}", fontSize = 12.sp) }
         }
@@ -244,7 +244,7 @@ fun IssuesScreen(
                             IssueRow(it0) {
                                 onOpenWeb("https://github.com/$owner/$name/issues/${it0.number}")
                             }
-                            Divider(color = HubColors.Border, thickness = 0.5.dp)
+                            Divider(color = LocalHubColors.current.border, thickness = 0.5.dp)
                         }
                         Spacer(Modifier.height(24.dp))
                     }
@@ -263,26 +263,26 @@ private fun IssueRow(i: GitHubApi.IssueInfo, onClick: () -> Unit) {
         Row(verticalAlignment = Alignment.Top) {
             Text(
                 if (opened) "●" else "✓",
-                color = if (opened) HubColors.Success else HubColors.Done,
+                color = if (opened) LocalHubColors.current.success else LocalHubColors.current.done,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 2.dp, end = 8.dp)
             )
             Text(
-                i.title, color = HubColors.Text, fontSize = 13.sp,
+                i.title, color = LocalHubColors.current.fg, fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f)
             )
         }
         Spacer(Modifier.height(5.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("#${i.number}", color = HubColors.Muted, fontSize = 11.sp)
+            Text("#${i.number}", color = LocalHubColors.current.fgMuted, fontSize = 11.sp)
             Spacer(Modifier.width(8.dp))
-            Text(i.user, color = HubColors.Muted, fontSize = 11.sp)
+            Text(i.user, color = LocalHubColors.current.fgMuted, fontSize = 11.sp)
             Spacer(Modifier.width(8.dp))
-            Text(GitHubApi.ago(i.createdAt), color = HubColors.Muted, fontSize = 11.sp)
+            Text(GitHubApi.ago(i.createdAt), color = LocalHubColors.current.fgMuted, fontSize = 11.sp)
             if (i.comments > 0) {
                 Spacer(Modifier.width(8.dp))
-                Text("${i.comments} 条评论", color = HubColors.Muted, fontSize = 11.sp)
+                Text("${i.comments} 条评论", color = LocalHubColors.current.fgMuted, fontSize = 11.sp)
             }
         }
         if (i.labels.isNotEmpty()) {
@@ -291,11 +291,11 @@ private fun IssueRow(i: GitHubApi.IssueInfo, onClick: () -> Unit) {
                 i.labels.take(3).forEach { l ->
                     Box(
                         Modifier.padding(end = 5.dp)
-                            .background(HubColors.Accent.copy(alpha = 0.15f),
+                            .background(LocalHubColors.current.accent.copy(alpha = 0.15f),
                                 androidx.compose.foundation.shape.RoundedCornerShape(10.dp))
                             .padding(horizontal = 7.dp, vertical = 2.dp)
                     ) {
-                        Text(l, color = HubColors.Accent, fontSize = 10.sp)
+                        Text(l, color = LocalHubColors.current.accent, fontSize = 10.sp)
                     }
                 }
             }
