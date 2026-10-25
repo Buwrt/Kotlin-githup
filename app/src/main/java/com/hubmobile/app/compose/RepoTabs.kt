@@ -47,7 +47,14 @@ import kotlinx.coroutines.withContext
 /* ---------------- 拉取请求 ---------------- */
 
 @Composable
-fun PullsScreen(owner: String, name: String, onOpen: (String) -> Unit) {
+fun PullsScreen(
+    owner: String,
+    name: String,
+    onOpen: (String) -> Unit,
+    onOpenDetail: (Int) -> Unit = { n ->
+        onOpen("https://github.com/$owner/$name/pull/$n")
+    }
+) {
     val ctx = LocalContext.current
     val c = LocalHubColors.current
     var tab by remember { mutableStateOf(0) }
@@ -82,7 +89,7 @@ fun PullsScreen(owner: String, name: String, onOpen: (String) -> Unit) {
                 else LazyColumn(Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(bottom = 24.dp)) {
                     items(list) { p ->
-                        PrRow(p) { onOpen("https://github.com/$owner/$name/pull/${p.number}") }
+                        PrRow(p) { onOpenDetail(p.number) }
                         Divider(color = c.borderMuted, thickness = 0.5.dp)
                     }
                 }

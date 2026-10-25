@@ -81,7 +81,11 @@ fun RepoScreen(
     onBack: () -> Unit,
     onOpenFile: (String, String) -> Unit,
     onOpenInWeb: () -> Unit,
-    onOpenWeb: (String) -> Unit
+    onOpenWeb: (String) -> Unit,
+    onOpenDetail: (Int, Boolean) -> Unit = { n, isPr ->
+        onOpenWeb("https://github.com/$owner/$name/" +
+            (if (isPr) "pull" else "issues") + "/$n")
+    }
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -249,8 +253,11 @@ fun RepoScreen(
                                 }
                             }
                             1 -> IssuesScreen(owner = owner, name = name,
-                                onBack = { tab = 0 }, onOpenWeb = onOpenWeb)
-                            2 -> PullsScreen(owner, name, onOpenWeb)
+                                onBack = { tab = 0 }, onOpenWeb = onOpenWeb,
+                                onOpenDetail = { n -> onOpenDetail(n, false) })
+                            2 -> PullsScreen(owner, name, onOpenWeb) { n ->
+                                onOpenDetail(n, true)
+                            }
                             3 -> ActionsScreen(owner, name, onOpenWeb)
                             4 -> ReleasesScreen(owner, name, onOpenWeb)
                             else -> MoreScreen(owner, name, onOpenWeb)

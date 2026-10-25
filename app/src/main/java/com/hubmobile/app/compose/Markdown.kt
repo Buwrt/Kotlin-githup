@@ -213,6 +213,7 @@ fun MarkdownText(
     onLink: ((String) -> Unit)? = null
 ) {
     val blocks = remember(src) { parseMarkdown(src) }
+    val isDark = LocalHubColors.current.canvas == HubColors.CanvasDark
     Column(modifier.fillMaxWidth()) {
         blocks.forEach { b ->
             when (b) {
@@ -246,7 +247,8 @@ fun MarkdownText(
                                 Spacer(Modifier.height(4.dp))
                             }
                             Text(
-                                b.code, color = LocalHubColors.current.fg, fontSize = 12.sp,
+                                highlight(b.code, langOf("x.${b.lang}"), isDark),
+                                color = LocalHubColors.current.fg, fontSize = 12.sp,
                                 fontFamily = FontFamily.Monospace,
                                 style = TextStyle(lineHeight = 17.sp)
                             )

@@ -3,19 +3,14 @@ package com.hubmobile.app.compose
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
-import kotlinx.coroutines.launch
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,40 +18,37 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.hubmobile.app.SecurePrefs
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import androidx.compose.ui.graphics.Color
 
 /*
  * 纯原生主界面 —— 对齐网页版 index.html 的骨架：
  *   #appbar  顶栏（返回 + 标题 + 右侧操作）
  *   #view    主内容区
  *   #tabbar  底部 5 个 tab：首页 / 通知 / 探索 / 搜索 / 我的
- *
- * 之前做成 3 个 tab（首页/搜索/设置）是随手发挥的，与网页版不一致，
- * 这里按 index.html 里的 5 个按钮对齐（图标名也照抄 data-icon）。
  */
 
 class NativeMainActivity : ComponentActivity() {
@@ -78,9 +70,7 @@ class NativeMainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val owner = intent.getStringExtra(EXTRA_OWNER) ?: ""
         val name = intent.getStringExtra(EXTRA_NAME) ?: ""
-        // 主题：auto / light / dark，对齐网页版设置项
         var theme by mutableStateOf(Prefs.theme(this))
-        // 启动页：home / notifications / explore / profile
         val startKey = Prefs.startTab(this)
         setContent {
             val dark = when (theme) {
@@ -117,27 +107,49 @@ private fun AppRoot(
 ) {
     val c = LocalHubColors.current
     val ctx = LocalContext.current
-    // 当前 tab；启动页由设置决定，外链进来带仓库坐标时先落到仓库页
     var tab by remember {
         mutableStateOf(Tab.values().firstOrNull { it.key == startKey } ?: Tab.Home)
     }
     var repo by remember { mutableStateOf(initialRepo) }
     var user by remember { mutableStateOf<String?>(null) }
-    var file by remember { mutableStateOf<Triple<String, String, String>?>(null) } // owner/branch/path
-    var issues by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var file by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var settings by remember { mutableStateOf(false) }
+    var login by remember { mutableStateOf(false) }
+    var totp by remember { mutableStateOf(false) }
+    var downloads by remember { mutableStateOf(false) }
+    var newRepo by remember { mutableStateOf(false) }
+    var newRelease by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var detail by remember { mutableStateOf<Triple<String, String, Int>?>(null) } // owner/name/number
+    var detailIsPr by remember { mutableStateOf(false) }
     var unread by remember { mutableStateOf(0) }
+    var update by remember { mutableStateOf<GitHubApi.UpdateInfo?>(null) }
+    var updateTip by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         unread = try {
-            withContext(kotlinx.coroutines.Dispatchers.IO) {
+            withContext(Dispatchers.IO) {
                 GitHubApi.notifications(ctx).count { it.unread }
             }
         } catch (e: Throwable) { 0 }
+        /*
+         * 静默更新：打开就查一次。已是最新版**完全不吭声**（对齐 README 的原则）；
+         * 只有真有更新才把结果挂出来让下面弹窗。
+         */
+        val info = try {
+            withContext(Dispatchers.IO) { GitHubApi.checkUpdate(ctx) }
+        } catch (e: Throwable) { null }
+        if (info != null) {
+            val cur = try {
+                ctx.packageManager.getPackageInfo(ctx.packageName, 0).versionName ?: ""
+            } catch (e: Throwable) { "" }
+            val cmp = GitHubApi.compareVersion(cur, info.version)
+            // -1 无法比较 / 0 无更新 → 静默；1 可选；2 强制
+            if (cmp >= 1) update = info
+        }
     }
 
-    // 子页（仓库/用户/文件/Issues/设置）时，底栏不高亮、顶栏显示返回
-    val inSub = repo != null || user != null || file != null || issues != null || settings
+    val inSub = repo != null || user != null || file != null || settings ||
+        login || totp || downloads || newRepo || newRelease != null || detail != null
 
     Scaffold(
         topBar = {
@@ -146,6 +158,12 @@ private fun AppRoot(
                     Text(
                         when {
                             settings -> "设置"
+                            login -> "登录"
+                            totp -> "两步验证器"
+                            downloads -> "下载管理"
+                            newRepo -> "新建仓库"
+                            newRelease != null -> "创建 Release"
+                            detail != null -> "#${detail!!.third}"
                             repo != null -> repo!!.let { "${it.first}/${it.second}" }
                             user != null -> user!!
                             else -> "githup"
@@ -157,8 +175,13 @@ private fun AppRoot(
                     if (inSub) {
                         TextButton(onClick = {
                             when {
+                                detail != null -> detail = null
                                 file != null -> file = null
-                                issues != null -> issues = null
+                                newRelease != null -> newRelease = null
+                                newRepo -> newRepo = false
+                                downloads -> downloads = false
+                                totp -> totp = false
+                                login -> login = false
                                 settings -> settings = false
                                 repo != null -> repo = null
                                 user != null -> user = null
@@ -170,17 +193,14 @@ private fun AppRoot(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = c.header,
-                    titleContentColor = c.fg
-                )
+                    containerColor = c.header, titleContentColor = c.fg)
             )
         },
         bottomBar = {
             if (!inSub) {
                 Row(
-                    Modifier.fillMaxWidth().background(c.tabbar)
-                        .padding(vertical = 6.dp),
-                    horizontalArrangement = androidx.compose.foundation.layout.Arrangement.SpaceEvenly
+                    Modifier.fillMaxWidth().background(c.tabbar).padding(vertical = 6.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     Tab.values().forEach { t ->
                         val sel = tab == t
@@ -193,9 +213,13 @@ private fun AppRoot(
                                 HubIcon(t.icon, Modifier.size(22.dp),
                                     if (sel) c.accent else c.fgSubtle)
                                 if (t == Tab.Notifications && unread > 0) {
-                                    Box(Modifier.size(14.dp)
-                                        .background(c.danger, androidx.compose.foundation.shape.CircleShape)
-                                        .align(Alignment.TopEnd), Alignment.Center) {
+                                    Box(
+                                        Modifier.size(14.dp)
+                                            .background(c.danger,
+                                                androidx.compose.foundation.shape.CircleShape)
+                                            .align(Alignment.TopEnd),
+                                        Alignment.Center
+                                    ) {
                                         Text(if (unread > 99) "99+" else unread.toString(),
                                             color = Color.White, fontSize = 8.sp)
                                     }
@@ -210,94 +234,184 @@ private fun AppRoot(
             }
         }
     ) { pad ->
-        Box(Modifier.fillMaxSize().padding(pad).background(c.canvas)) {
-            when {
-                settings -> SettingsScreen(
-                    onOpenWeb = { openWeb(ctx, it) },
-                    onLogout = { settings = false; tab = Tab.Home },
-                    onRestart = { }
-                )
-                file != null -> {
-                    val (o, br, p) = file!!
-                    FileScreen(
-                        owner = o, name = repo?.second ?: "",
-                        branch = br, path = p,
-                        onBack = { file = null },
-                        onOpenWeb = { openWeb(ctx, it) }
+        // 平板 / 大屏：宽屏下内容限宽居中 900px（对齐网页版 1.1.3 的适配）
+        BoxWithConstraints(Modifier.fillMaxSize().padding(pad).background(c.canvas)) {
+            val wide = maxWidth >= 700.dp
+            Box(
+                Modifier
+                    .then(if (wide) Modifier.width(900.dp) else Modifier.fillMaxWidth())
+                    .fillMaxSize()
+                    .align(if (wide) Alignment.TopCenter else Alignment.TopStart)
+            ) {
+                when {
+                    settings -> SettingsScreen(
+                        onOpenWeb = { openWeb(ctx, it) },
+                        onLogout = { settings = false; tab = Tab.Home },
+                        onRestart = { }
                     )
-                }
-                issues != null -> {
-                    val (o, n) = issues!!
-                    IssuesScreen(owner = o, name = n, onBack = { issues = null },
-                            onOpenWeb = { openWeb(ctx, it) })
-                }
-                repo != null -> {
-                    val (o, n) = repo!!
-                    RepoScreen(
-                        owner = o, name = n,
-                        onBack = { repo = null },
-                        onOpenFile = { path, branch -> file = Triple(o, branch, path) },
-                        onOpenInWeb = { openWeb(ctx, "https://github.com/$o/$n") },
-                        onOpenWeb = { openWeb(ctx, it) }
+                    login -> LoginScreen(
+                        onDone = { login = false; tab = Tab.Home },
+                        onSkip = { login = false }
                     )
-                }
-                user != null -> UserScreen(
-                    login = user!!,
-                    onOpenRepo = { o, n -> repo = o to n },
-                    onOpenUser = { user = it },
-                    onOpenWeb = { openWeb(ctx, it) }
-                )
-                tab == Tab.Home -> HomeScreen(
-                    onOpenRepo = { o, n -> repo = o to n },
-                    onOpenUser = { user = it },
-                    onNeedToken = { settings = true },
-                    onNewRepo = { openWeb(ctx, "https://github.com/new") },
-                    // 快捷宫格：我的仓库/Star 走原生用户页，其余暂借内置浏览器
-                    onQuick = { key ->
-                        val login = meLogin(ctx)
-                        when (key) {
-                            "repos", "stars" -> if (login.isNotBlank()) user = login
-                            "issues" -> openWeb(ctx, "https://github.com/issues")
-                            "pulls" -> openWeb(ctx, "https://github.com/pulls")
-                            "gists" -> openWeb(ctx,
-                                "https://gist.github.com/${login.ifBlank { "" }}")
-                            "orgs" -> openWeb(ctx, "https://github.com/settings/organizations")
+                    totp -> TotpScreen(onBack = { totp = false })
+                    downloads -> DownloadsScreen(onBack = { downloads = false })
+                    newRepo -> NewRepoScreen(
+                        onBack = { newRepo = false },
+                        onCreated = { full ->
+                            newRepo = false
+                            val p = full.split('/')
+                            if (p.size == 2) repo = p[0] to p[1]
                         }
+                    )
+                    newRelease != null -> {
+                        val (o, n) = newRelease!!
+                        NewReleaseScreen(o, n, onBack = { newRelease = null })
                     }
-                )
-                tab == Tab.Notifications -> NotificationsScreen(
-                    onOpen = { openWeb(ctx, it) },
-                    onMarkAllRead = {
-                        kotlinx.coroutines.MainScope().launch {
-                            val ok = withContext(kotlinx.coroutines.Dispatchers.IO) {
-                                GitHubApi.markAllRead(ctx)
+                    detail != null -> {
+                        val (o, n, num) = detail!!
+                        IssueDetailScreen(
+                            owner = o, name = n, number = num, isPr = detailIsPr,
+                            onBack = { detail = null },
+                            onOpenUser = { user = it }
+                        )
+                    }
+                    file != null -> {
+                        val (o, br, p) = file!!
+                        FileScreen(
+                            owner = o, name = repo?.second ?: "", branch = br, path = p,
+                            onBack = { file = null },
+                            onOpenWeb = { openWeb(ctx, it) }
+                        )
+                    }
+                    repo != null -> {
+                        val (o, n) = repo!!
+                        RepoScreen(
+                            owner = o, name = n,
+                            onBack = { repo = null },
+                            onOpenFile = { path, branch -> file = Triple(o, branch, path) },
+                            onOpenInWeb = { openWeb(ctx, "https://github.com/$o/$n") },
+                            onOpenWeb = { openWeb(ctx, it) },
+                            onOpenDetail = { num, isPr ->
+                                detailIsPr = isPr
+                                detail = Triple(o, n, num)
                             }
-                            if (ok) unread = 0
+                        )
+                    }
+                    user != null -> UserScreen(
+                        login = user!!,
+                        onOpenRepo = { o, n -> repo = o to n },
+                        onOpenUser = { user = it },
+                        onOpenWeb = { openWeb(ctx, it) }
+                    )
+                    tab == Tab.Home -> HomeScreen(
+                        onOpenRepo = { o, n -> repo = o to n },
+                        onOpenUser = { user = it },
+                        onNeedToken = { login = true },
+                        onNewRepo = { newRepo = true },
+                        onQuick = { key ->
+                            val lg = meLogin(ctx)
+                            when (key) {
+                                "repos", "stars" -> if (lg.isNotBlank()) user = lg
+                                "issues" -> openWeb(ctx, "https://github.com/issues")
+                                "pulls" -> openWeb(ctx, "https://github.com/pulls")
+                                "gists" -> openWeb(ctx, "https://gist.github.com/$lg")
+                                "orgs" -> openWeb(ctx,
+                                    "https://github.com/settings/organizations")
+                            }
+                        }
+                    )
+                    tab == Tab.Notifications -> NotificationsScreen(
+                        onOpen = { openWeb(ctx, it) },
+                        onMarkAllRead = {
+                            MainScope().launch {
+                                val ok = withContext(Dispatchers.IO) {
+                                    GitHubApi.markAllRead(ctx)
+                                }
+                                if (ok) unread = 0
+                            }
+                        }
+                    )
+                    tab == Tab.Explore -> ExploreScreen(
+                        onOpenRepo = { o, n -> repo = o to n }
+                    )
+                    tab == Tab.Search -> SearchScreen(
+                        onOpenRepo = { o, n -> repo = o to n },
+                        onOpenUser = { user = it },
+                        onOpenWeb = { openWeb(ctx, it) }
+                    )
+                    tab == Tab.Profile -> ProfileScreen(
+                        onOpenRepo = { o, n -> repo = o to n },
+                        onOpenUser = { user = it },
+                        onSettings = { settings = true },
+                        onOpenWeb = { openWeb(ctx, it) },
+                        onLogin = { login = true },
+                        onTotp = { totp = true },
+                        onNewRepo = { newRepo = true },
+                        onDownloads = { downloads = true }
+                    )
+                }
+            }
+        }
+
+        // 更新弹窗：只在真有更新时出现（已是最新版完全静默）
+        if (update != null) {
+            val info = update!!
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { /* 强制更新不可关闭 */ },
+                title = { Text("有新版本 ${info.version}", fontSize = 15.sp) },
+                text = {
+                    Column {
+                        if (info.notes.isNotBlank()) {
+                            Text(info.notes.take(300), color = c.fgMuted, fontSize = 12.sp,
+                                maxLines = 8)
                         }
                     }
-                )
-                tab == Tab.Explore -> ExploreScreen(
-                    onOpenRepo = { o, n -> repo = o to n }
-                )
-                tab == Tab.Search -> SearchScreen(
-                    onOpenRepo = { o, n -> repo = o to n },
-                    onOpenUser = { user = it },
-                    onOpenWeb = { openWeb(ctx, it) }
-                )
-                tab == Tab.Profile -> ProfileScreen(
-                    onOpenRepo = { o, n -> repo = o to n },
-                    onOpenUser = { user = it },
-                    onSettings = { settings = true },
-                    onOpenWeb = { openWeb(ctx, it) }
-                )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        // 走系统 DownloadManager（与网页版 installApk 前的下载一致），
+                        // 下完由系统安装器接管
+                        try {
+                            val req = android.app.DownloadManager
+                                .Request(android.net.Uri.parse(info.apkUrl))
+                                .setTitle("githup ${info.version}")
+                                .setMimeType("application/vnd.android.package-archive")
+                                .setNotificationVisibility(
+                                    android.app.DownloadManager.Request
+                                        .VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                                .setDestinationInExternalPublicDir(
+                                    android.os.Environment.DIRECTORY_DOWNLOADS,
+                                    "githup/githup-${info.version}.apk")
+                            val dm = ctx.getSystemService(Context.DOWNLOAD_SERVICE)
+                                    as android.app.DownloadManager
+                            dm.enqueue(req)
+                            updateTip = "已开始下载，完成后点通知安装"
+                        } catch (e: Throwable) {
+                            updateTip = "下载失败，请到 Releases 手动下载"
+                        }
+                        update = null
+                    }) { Text("立即更新", color = c.accent) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { update = null }) { Text("稍后") }
+                }
+            )
+        }
+        if (updateTip != null) {
+            Box(Modifier.fillMaxSize().padding(bottom = 40.dp), Alignment.BottomCenter) {
+                Box(Modifier.background(c.bgHi,
+                    androidx.compose.foundation.shape.RoundedCornerShape(8.dp))
+                    .padding(horizontal = 14.dp, vertical = 8.dp)) {
+                    Text(updateTip!!, color = c.fg, fontSize = 12.sp)
+                }
             }
         }
     }
 }
 
 /**
- * 尚未原生化的内容（Issue 详情、新建仓库等）暂借内置浏览器。
- * 注意这里不是回到 WebView 主界面，只是单开一个网页。
+ * 尚未原生化的内容（Issue 详情的网页版入口等）暂借内置浏览器。
+ * 注意不是回到 WebView 主界面，只是单开一个网页。
  */
 private fun openWeb(ctx: Context, url: String) {
     val i = Intent(ctx, com.hubmobile.app.WebViewActivity::class.java)

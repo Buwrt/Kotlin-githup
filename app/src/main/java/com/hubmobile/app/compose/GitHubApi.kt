@@ -747,6 +747,241 @@ object GitHubApi {
         )
     }
 
+    /* ---------- Issue / PR 详情与评论 ---------- */
+
+    data class CommentInfo(
+        val id: Long,
+        val user: String,
+        val avatar: String,
+        val body: String,
+        val createdAt: String
+    ) {
+        companion object {
+            fun from(o: JSONObject): CommentInfo = CommentInfo(
+                id = o.optLong("id"),
+                user = o.optJSONObject("user")?.safe("login") ?: "",
+                avatar = o.optJSONObject("user")?.safe("avatar_url") ?: "",
+                body = o.safe("body"),
+                createdAt = o.safe("created_at")
+            )
+        }
+    }
+
+    data class IssueDetail(
+        val number: Int,
+        val title: String,
+        val body: String,
+        val state: String,
+        val user: String,
+        val userAvatar: String,
+        val createdAt: String,
+        val comments: Int,
+        val labels: List<String>,
+        val isPr: Boolean
+    )
+
+    /** 取 issue / PR 详情（两者在 GitHub 上是同一个接口，PR 多几个字段） */
+    fun issueDetail(ctx: Context, owner: String, name: String, number: Int): IssueDetail {
+        val o = JSONObject(get(ctx, "$API/repos/$owner/$name/issues/$number"))
+        val arr = o.optJSONArray("labels")
+        val ls = ArrayList<String>()
+        if (arr != null) for (i in 0 until arr.length()) {
+            arr.optJSONObject(i)?.let { o2 ->
+                if (!o2.isNull("name")) { val v = o2.optString("name", ""); if (v.isNotEmpty()) ls.add(v) }
+            }
+        }
+        return IssueDetail(
+            number = o.optInt("number"),
+            title = o.safe("title"),
+            body = o.safe("body"),
+            state = o.safe("state"),
+            user = o.optJSONObject("user")?.safe("login") ?: "",
+            userAvatar = o.optJSONObject("user")?.safe("avatar_url") ?: "",
+            createdAt = o.safe("created_at"),
+            comments = o.optInt("comments"),
+            labels = ls,
+            isPr = o.has("pull_request")
+        )
+    }
+
+    fun comments(ctx: Context, owner: String, name: String, number: Int): List<CommentInfo> {
+        val arr = org.json.JSONArray(get(ctx,
+            "$API/repos/$owner/$name/issues/$number/comments?per_page=100"))
+        val out = ArrayList<CommentInfo>()
+        for (i in 0 until arr.length()) out.add(CommentInfo.from(arr.getJSONObject(i)))
+        return out
+    }
+
+    /** 发评论。需要令牌，且该 issue 未锁定 */
+    fun addComment(ctx: Context, owner: String, name: String, number: Int, body: String): Boolean {
+        val json = JSONObject().put("body", body).toString()
+        Http.request("POST", "$API/repos/$owner/$name/issues/$number/comments", json, headers(ctx))
+        return true
+    }
+
+    /** 关闭 / 重开 issue */
+    fun setIssueState(ctx: Context, owner: String, name: String, number: Int, open: Boolean): Boolean {
+        val st = if (open) "open" else "closed"
+        Http.request("PATCH", "$API/repos/$owner/$name/issues/$number",
+            JSONObject().put("state", st).toString(), headers(ctx))
+        return true
+    }
+
+    /* ---------- 写操作 ---------- */
+
+    /** 新建仓库。返回 full_name */
+    fun createRepo(
+        ctx: Context, name: String, description: String,
+        private: Boolean, autoInit: Boolean
+    ): RepoInfo {
+        val b = JSONObject()
+            .put("name", name)
+            .put("description", description)
+            .put("private", private)
+            .put("auto_init", autoInit)
+        val s = Http.request("POST", "$API/user/repos", b.toString(), headers(ctx))
+        return RepoInfo.from(JSONObject(s))
+    }
+
+    /** 上传文件到仓库路径（contents API，需 base64） */
+    fun putFile(
+        ctx: Context, owner: String, name: String, path: String,
+        contentBase64: String, message: String, branch: String
+    ): Boolean {
+        val b = JSONObject()
+            .put("message", message)
+            .put("content", contentBase64)
+        if (branch.isNotBlank()) b.put("branch", branch)
+        Http.request("PUT", "$API/repos/$owner/$name/contents/${path.trim('/')}",
+            b.toString(), headers(ctx))
+        return true
+    }
+
+    /** 创建 Release（不带附件；附件要走 uploads 接口，另做） */
+    fun createRelease(
+        ctx: Context, owner: String, name: String,
+        tag: String, title: String, body: String,
+        draft: Boolean, prerelease: Boolean
+    ): Boolean {
+        val b = JSONObject()
+            .put("tag_name", tag)
+            .put("name", title)
+            .put("body", body)
+            .put("draft", draft)
+            .put("prerelease", prerelease)
+        Http.request("POST", "$API/repos/$owner/$name/releases", b.toString(), headers(ctx))
+        return true
+    }
+
+    /* ---------- 关注 / 取关 ---------- */
+
+    fun isFollowing(ctx: Context, login: String): Boolean = try {
+        Http.request("GET", "$API/user/following/$login", null, headers(ctx))
+        true
+    } catch (e: Throwable) {
+        if (e is ApiError && e.code == 404) false else throw e
+    }
+
+    fun follow(ctx: Context, login: String): Boolean = try {
+        Http.request("PUT", "$API/user/following/$login", "", headers(ctx)); true
+    } catch (e: Throwable) { false }
+
+    fun unfollow(ctx: Context, login: String): Boolean = try {
+        Http.request("DELETE", "$API/user/following/$login", null, headers(ctx))
+        true
+    } catch (e: Throwable) { false }
+
+    /** Star / 取消 Star */
+    fun star(ctx: Context, owner: String, name: String): Boolean = try {
+        Http.request("PUT", "$API/user/starred/$owner/$name", "", headers(ctx)); true
+    } catch (e: Throwable) { false }
+
+    fun unstar(ctx: Context, owner: String, name: String): Boolean = try {
+        Http.request("DELETE", "$API/user/starred/$owner/$name", null, headers(ctx))
+        true
+    } catch (e: Throwable) { false }
+
+    fun isStarred(ctx: Context, owner: String, name: String): Boolean = try {
+        Http.request("GET", "$API/user/starred/$owner/$name", null, headers(ctx))
+        true
+    } catch (e: Throwable) {
+        if (e is ApiError && e.code == 404) false else throw e
+    }
+
+    /* ---------- 个人资料编辑 ---------- */
+
+    /** PATCH /user —— 改 name / bio / blog / company / location */
+    fun updateProfile(
+        ctx: Context, name: String?, bio: String?, blog: String?,
+        company: String?, location: String?
+    ): Boolean {
+        val b = JSONObject()
+        if (name != null) b.put("name", name)
+        if (bio != null) b.put("bio", bio)
+        if (blog != null) b.put("blog", blog)
+        if (company != null) b.put("company", company)
+        if (location != null) b.put("location", location)
+        Http.request("PATCH", "$API/user", b.toString(), headers(ctx))
+        return true
+    }
+
+    /* ---------- 更新检测（对齐 updater.js） ---------- */
+
+    data class UpdateInfo(
+        val version: String,
+        val apkUrl: String,
+        val size: Long,
+        val sha256: String,
+        val notes: String
+    )
+
+    /**
+     * 两条路并行：先试 releases/latest，取不到再读 version.json。
+     * 与 updater.js 的策略一致。
+     */
+    fun checkUpdate(ctx: Context, repo: String = "Buwrt/githup"): UpdateInfo? {
+        try {
+            val o = JSONObject(get(ctx, "$API/repos/$repo/releases/latest"))
+            val tag = o.safe("tag_name").removePrefix("v")
+            val aa = o.optJSONArray("assets")
+            if (aa != null) for (i in 0 until aa.length()) {
+                val a = aa.getJSONObject(i)
+                val url = a.safe("browser_download_url")
+                if (url.endsWith(".apk")) {
+                    return UpdateInfo(tag.ifBlank { o.safe("name") }, url,
+                        a.optLong("size"), "", o.safe("body"))
+                }
+            }
+            if (tag.isNotBlank()) return UpdateInfo(tag, o.safe("html_url"),
+                0L, "", o.safe("body"))
+        } catch (e: Throwable) { /* 落到 version.json */ }
+
+        return try {
+            val s = get(ctx, "https://raw.githubusercontent.com/$repo/main/version.json")
+            val o = JSONObject(s)
+            UpdateInfo(o.safe("version"), o.safe("apk"),
+                o.optLong("size"), o.safe("sha256"), o.safe("notes"))
+        } catch (e: Throwable) { null }
+    }
+
+    /**
+     * 版本比较，返回：0=无更新 1=可选(z位变化) 2=强制(x或y位变化) -1=无法比较
+     * 对齐 README 里的 x.y.z 规则。
+     */
+    fun compareVersion(cur: String, remote: String): Int {
+        fun parts(v: String): List<Int>? {
+            val t = v.trim().removePrefix("v")
+            val ps = t.split('.')
+            if (ps.size != 3) return null
+            return try { ps.map { it.toInt() } } catch (e: Throwable) { null }
+        }
+        val a = parts(cur) ?: return -1
+        val b = parts(remote) ?: return -1
+        if (b[0] != a[0]) return 2
+        if (b[1] != a[1]) return 2
+        return if (b[2] > a[2]) 1 else 0
+    }
+
     /* ---------- 探索（trending） ---------- */
 
     /**
