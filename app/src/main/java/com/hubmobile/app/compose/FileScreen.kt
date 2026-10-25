@@ -130,9 +130,10 @@ fun FileScreen(
                     onOpenWeb("https://github.com/$owner/$name/blob/$branch/${path.trim('/')}")
                 }) { Text("用浏览器打开", color = LocalHubColors.current.accent) }
             }
-            fc == null -> CenteredText("加载失败，请重试") {
-                TextButton(onClick = { load() }) { Text("重试") }
-            }
+            /* 安全网：fc 为 null 时不再强解引用。
+               FileScreen 的加载内联在 LaunchedEffect 里（没有 load() 函数），
+               这里只能给提示；真出问题时用户退出重进即可。 */
+            fc == null -> CenteredText("加载失败，请退出后重试")
             else -> {
                 val f = fc!!
                 when {
