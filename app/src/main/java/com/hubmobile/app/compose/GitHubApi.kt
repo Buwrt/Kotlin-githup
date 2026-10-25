@@ -166,6 +166,80 @@ object GitHubApi {
         }
     }
 
+    data class UserInfo(
+        val login: String,
+        val name: String,
+        val avatarUrl: String,
+        val bio: String,
+        val publicRepos: Int,
+        val followers: Int,
+        val following: Int,
+        val htmlUrl: String
+    ) {
+        companion object {
+            fun from(o: JSONObject): UserInfo = UserInfo(
+                login = o.optString("login"),
+                name = o.optString("name"),
+                avatarUrl = o.optString("avatar_url"),
+                bio = o.optString("bio"),
+                publicRepos = o.optInt("public_repos"),
+                followers = o.optInt("followers"),
+                following = o.optInt("following"),
+                htmlUrl = o.optString("html_url")
+            )
+        }
+    }
+
+    /** 当前登录者；没令牌时返回 null（不抛异常，好让 UI 显示"未登录"） */
+    fun me(ctx: Context): UserInfo? = try {
+        UserInfo.from(JSONObject(get(ctx, "$API/user")))
+    } catch (e: Throwable) {
+        null
+    }
+
+    fun user(ctx: Context, login: String): UserInfo =
+        UserInfo.from(JSONObject(get(ctx, "$API/users/$login")))
+
+    /** 某用户的公开仓库，按更新时间倒序 */
+    fun userRepos(ctx: Context, login: String, page: Int = 1): List<RepoInfo> {
+        val s = get(ctx,
+            "$API/users/$login/repos?per_page=100&page=$page&sort=updated")
+        val arr = org.json.JSONArray(s)
+        val out = ArrayList<RepoInfo>()
+        for (i in 0 until arr.length()) out.add(RepoInfo.from(arr.getJSONObject(i)))
+        return out
+    }
+
+    /** 当前登录者能看到的仓库（含私有） */
+    fun myRepos(ctx: Context, page: Int = 1): List<RepoInfo> {
+        val s = get(ctx,
+            "$API/user/repos?per_page=100&page=$page&sort=updated&affiliation=owner,collaborator")
+        val arr = org.json.JSONArray(s)
+        val out = ArrayList<RepoInfo>()
+        for (i in 0 until arr.length()) out.add(RepoInfo.from(arr.getJSONObject(i)))
+        return out
+    }
+
+    fun starred(ctx: Context, login: String, page: Int = 1): List<RepoInfo> {
+        val s = get(ctx, "$API/users/$login/starred?per_page=100&page=$page")
+        val arr = org.json.JSONArray(s)
+        val out = ArrayList<RepoInfo>()
+        for (i in 0 until arr.length()) out.add(RepoInfo.from(arr.getJSONObject(i)))
+        return out
+    }
+
+    data class SearchResult(val total: Int, val items: List<RepoInfo>)
+
+    fun searchRepos(ctx: Context, q: String, page: Int = 1): SearchResult {
+        val url = "$API/search/repositories?q=" +
+            java.net.URLEncoder.encode(q, "UTF-8") + "&per_page=50&page=$page"
+        val o = JSONObject(get(ctx, url))
+        val arr = o.optJSONArray("items") ?: org.json.JSONArray()
+        val out = ArrayList<RepoInfo>()
+        for (i in 0 until arr.length()) out.add(RepoInfo.from(arr.getJSONObject(i)))
+        return SearchResult(o.optInt("total_count"), out)
+    }
+
     fun humanSize(bytes: Long): String {
         if (bytes <= 0L) return ""
         val u = arrayOf("B", "KB", "MB", "GB")

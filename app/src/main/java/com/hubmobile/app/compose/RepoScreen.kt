@@ -428,9 +428,4 @@ private fun ErrorBox(msg: String, onRetry: () -> Unit) {
     }
 }
 
-/** 1234 → 1.2k */
-private fun compact(n: Int): String = when {
-    n >= 1_000_000 -> String.format("%.1fM", n / 1_000_000.0)
-    n >= 1000 -> String.format("%.1fk", n / 1000.0)
-    else -> n.toString()
-}
+// compact() 定义在 Screens.kt，本文件直接用

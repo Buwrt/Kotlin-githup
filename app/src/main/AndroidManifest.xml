@@ -77,10 +77,10 @@
               （CSS 里的 vvh）自己扣键盘高度，页面本身不 resize，
               改 adjustResize 会双重扣减。
             -->
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
+            <!--
+              MAIN/LAUNCHER 已移到 compose.NativeMainActivity（路线 B：纯原生）。
+              这里保留 VIEW/SEND 过滤器接管外链，由原生路由分发。
+            -->
             <!--
               接收外部分享 / 打开的 GitHub 链接。
               从浏览器、微信、其他 App 点「分享」或「打开方式」时，
@@ -143,6 +143,45 @@
           theme 沿用 AppTheme：Compose 用 setContent 渲染，
           不需要 AppCompat 主题，但沿用可以保证状态栏/窗口背景与网页版一致。
         -->
+        <!--
+          纯原生主界面：新的启动入口。
+          MAIN/LAUNCHER 在这里 —— App 打开即进入 Compose 渲染的界面，
+          不再加载 WebView、不再渲染 assets/web 下的任何页面。
+        -->
+        <activity
+            android:name=".compose.NativeMainActivity"
+            android:exported="true"
+            android:theme="@style/AppTheme"
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|navigation|uiMode|density|fontScale"
+            android:windowSoftInputMode="adjustPan|stateHidden"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- 外链 GitHub 链接：直接落到原生路由 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="http" />
+                <data android:scheme="https" />
+                <data android:host="github.com" />
+                <data android:host="www.github.com" />
+                <data android:host="gist.github.com" />
+                <data android:host="raw.githubusercontent.com" />
+                <data android:host="codeload.github.com" />
+                <data android:host="user-images.githubusercontent.com" />
+                <data android:host="avatars.githubusercontent.com" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
+
         <activity
             android:name=".compose.ComposeHostActivity"
             android:exported="false"
