@@ -187,16 +187,67 @@ object GitHubApi {
      * 头像：走 Http.requestRaw 拿原始字节，BitmapFactory 解码。
      * 不引 Coil / Glide —— 一个头像不值得拉一整个图片库进来。
      */
-    fun loadBitmap(ctx: Context, url: String): Bitmap? {
+    /**
+     * 头像 / 小图加载。
+     *
+     * ⚠️ 这里以前是 `BitmapFactory.decodeByteArray(b, 0, b.size)` 直接全尺寸解码 ——
+     * 而 GitHub 的 avatar_url 是 `.../u/xxx?v=4`，**不带尺寸参数，返回的是原图**。
+     * 用户头像原图常见 1000~4000 px，按 ARGB_8888 算：
+     *
+     *     4000 × 4000 × 4B = 64 MB
+     *
+     * 一个头像就吃掉几十 MB，列表里同时加载十几个（首页仓库列表、用户页、
+     * 评论列表都在调它）就是几百 MB —— 中低端机直接 OOM，
+     * 表现就是「界面还在转圈，然后整个 App 没了」。
+     *
+     * 现在做两道保险：
+     *   1. 请求时就让 GitHub 返回小图（拼 ?s= / &s=）
+     *   2. 拿到字节后先 inJustDecodeBounds 读尺寸，再按目标边长降采样
+     *
+     * 为什么两道都要：CDN 不一定认 s 参数（自建 / 代理镜像常忽略），
+     * 只靠 URL 参数挡不住；而只靠降采样的话，大图要先整个下载完，
+     * 白白浪费流量和时间。
+     */
+    fun loadBitmap(ctx: Context, url: String, maxPx: Int = 128): Bitmap? {
         if (url.isBlank()) return null
         return try {
-            val raw = Http.requestRaw("GET", url, headers(ctx))
+            val sized = sizedAvatarUrl(url, maxPx)
+            val raw = Http.requestRaw("GET", sized, headers(ctx))
             val b = raw.body ?: return null
             if (raw.code !in 200..299) return null
-            BitmapFactory.decodeByteArray(b, 0, b.size)
+            decodeSampled(b, maxPx)
+        } catch (e: OutOfMemoryError) {
+            /* OOM 要单独吞掉并让 GC 有机会回收：
+               继续往外抛会把整个进程带走（就是「闪退」）。 */
+            null
         } catch (e: Throwable) {
             null
         }
+    }
+
+    /** 给头像 URL 拼尺寸参数：avatars.githubusercontent.com 认 ?s= */
+    private fun sizedAvatarUrl(url: String, px: Int): String {
+        return try {
+            if (!url.contains("avatars.githubusercontent.com")) return url
+            val sep = if (url.contains("?")) "&" else "?"
+            "$url${sep}s=$px"
+        } catch (e: Throwable) { url }
+    }
+
+    /** 按目标最大边长降采样解码，避免大图直接撑爆堆 */
+    private fun decodeSampled(bytes: ByteArray, maxPx: Int): Bitmap? {
+        val probe = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, probe)
+        val w = probe.outWidth
+        val h = probe.outHeight
+        if (w <= 0 || h <= 0) return null
+        var sample = 1
+        while (w / sample > maxPx || h / sample > maxPx) sample *= 2
+        val opt = BitmapFactory.Options().apply {
+            inSampleSize = sample
+            inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
+        }
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opt)
     }
 
     data class UserInfo(

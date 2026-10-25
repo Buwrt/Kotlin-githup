@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -832,6 +833,18 @@ fun SettingsScreen(
     var showTheme by remember { mutableStateOf(false) }
     var showFont by remember { mutableStateOf(false) }
     var showStart by remember { mutableStateOf(false) }
+    /*
+     * 上次崩溃记录。
+     *
+     * 真机上用户拿不到 logcat，「界面转着圈就没了」只能靠猜 ——
+     * 项目里 CrashLog 已经把堆栈写进 filesDir/last_crash.txt，
+     * 这里给它一个能看的入口，用户截图发过来就能定位。
+     */
+    var crash by remember { mutableStateOf<String?>(null) }
+    var showCrash by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        crash = try { com.hubmobile.app.CrashLog.readLast(ctx) } catch (e: Throwable) { null }
+    }
 
     // 进设置时顺手拉一次配额
     LaunchedEffect(Unit) {
@@ -950,7 +963,40 @@ fun SettingsScreen(
             SetRow("mark-github", "源码仓库", "") {
                 onOpenWeb("https://github.com/Buwrt/Kotlin-githup")
             }
+            SetRow("alert", "上次崩溃记录",
+                if (crash != null) "有（点击查看）" else "无") {
+                if (crash != null) showCrash = true else tip = "没有崩溃记录"
+            }
         }
+    }
+
+    // ---- 崩溃记录弹层 ----
+    if (showCrash && crash != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showCrash = false },
+            title = { Text("上次崩溃", fontSize = 15.sp) },
+            text = {
+                Text(
+                    crash!!, color = c.fgMuted, fontSize = 10.sp,
+                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                    modifier = Modifier.verticalScroll(rememberScrollState())
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    val cm = ctx.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                            as android.content.ClipboardManager
+                    cm.setPrimaryClip(android.content.ClipData.newPlainText("crash", crash))
+                    tip = "已复制到剪贴板"
+                }) { Text("复制") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    try { com.hubmobile.app.CrashLog.clear(ctx) } catch (e: Throwable) {}
+                    crash = null; showCrash = false; tip = "已清除"
+                }) { Text("清除") }
+            }
+        )
     }
 
     // ---- 三个选择弹层 ----

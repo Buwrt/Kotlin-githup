@@ -113,6 +113,15 @@ private fun AppRoot(
     var repo by remember { mutableStateOf(initialRepo) }
     var user by remember { mutableStateOf<String?>(null) }
     var userTab by remember { mutableStateOf("overview") }
+    /*
+     * 当前登录名。宫格跳转要用。
+     *
+     * ⚠️ 原来是同步调 meLogin(ctx) —— 那是**主线程直接发网络请求**。
+     * 虽然有 try-catch 兜着不会崩，但主线程网络在部分 ROM 上会被
+     * StrictMode 直接杀进程，而且会卡住 UI 几百毫秒。
+     * 改成启动时异步取一次缓存在这里。
+     */
+    var myLogin by remember { mutableStateOf("") }
     var file by remember { mutableStateOf<Triple<String, String, String>?>(null) }
     var settings by remember { mutableStateOf(false) }
     var login by remember { mutableStateOf(false) }
@@ -128,6 +137,9 @@ private fun AppRoot(
     var updateTip by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
+        myLogin = try {
+            withContext(Dispatchers.IO) { GitHubApi.me(ctx)?.login ?: "" }
+        } catch (e: Throwable) { "" }
         unread = try {
             withContext(Dispatchers.IO) {
                 GitHubApi.notifications(ctx).count { it.unread }
@@ -337,7 +349,7 @@ private fun AppRoot(
                         onNeedToken = { login = true },
                         onNewRepo = { newRepo = true },
                         onQuick = { key ->
-                            val lg = meLogin(ctx)
+                            val lg = myLogin
                             when (key) {
                                 "repos", "stars" -> if (lg.isNotBlank()) {
                                     userTab = key; user = lg
@@ -453,9 +465,3 @@ private fun openWeb(ctx: Context, url: String) {
     ctx.startActivity(i)
 }
 
-/** 当前登录名（宫格跳转要用）。取不到返回空串。 */
-private fun meLogin(ctx: Context): String {
-    return try {
-        GitHubApi.me(ctx)?.login ?: ""
-    } catch (e: Throwable) { "" }
-}
