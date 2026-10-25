@@ -44,12 +44,12 @@ Daemon will be stopped at the end of the build
 > Task :app:mergeDebugNativeLibs NO-SOURCE
 > Task :app:processDebugManifestForPackage
 > Task :app:mergeExtDexDebug
-> Task :app:mergeLibDexDebug
 > Task :app:stripDebugDebugSymbols NO-SOURCE
-> Task :app:processDebugResources
+> Task :app:mergeLibDexDebug
 > Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
+> Task :app:processDebugResources
 > Task :app:compileDebugKotlin
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:183:48 Parameter 'speed' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/ChannelProbe.kt:185:42 Unsafe use of a nullable receiver of type LongArray?
@@ -113,8 +113,8 @@ w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hu
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Icons.kt:41:13 Variable 'fill' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Icons.kt:230:22 Parameter 'scope' is never used
 w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/RepoScreen.kt:280:5 Parameter 'avatar' is never used
-w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:267:9 Variable 'c' is never used
-w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:390:23 Parameter 'login' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:268:9 Variable 'c' is never used
+w: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/Screens.kt:391:23 Parameter 'login' is never used
 
 > Task :app:compileDebugJavaWithJavac
 Note: /home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/JsBridge.java uses or overrides a deprecated API.
@@ -129,5 +129,5 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
 
-BUILD SUCCESSFUL in 2m 45s
+BUILD SUCCESSFUL in 2m 46s
 35 actionable tasks: 34 executed, 1 from cache
