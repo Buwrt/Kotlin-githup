@@ -95,45 +95,45 @@ fun IssueDetailScreen(
             loading -> { SkeletonList(3); CenteredLoading() }
             err != null -> CenteredText(err!!) { TextButton(onClick = { load() }) { Text("重试") } }
             else -> {
-                val it = d!!
+                val det = d!!
                 LazyColumn(Modifier.weight(1f),
                     contentPadding = PaddingValues(bottom = 8.dp)) {
                     // 标题区
                     item {
                         Column(Modifier.fillMaxWidth().background(c.bg).padding(14.dp)) {
-                            Text(it.title, color = c.fg, fontSize = 16.sp,
+                            Text(det.title, color = c.fg, fontSize = 16.sp,
                                 fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.height(7.dp))
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(
                                     Modifier.background(
-                                        if (it.state == "open") c.success else c.done,
+                                        if (det.state == "open") c.success else c.done,
                                         RoundedCornerShape(12.dp))
                                         .padding(horizontal = 9.dp, vertical = 3.dp)
                                 ) {
                                     Text(
                                         if (isPr) {
-                                            if (it.state == "open") "开启中" else "已关闭"
+                                            if (det.state == "open") "开启中" else "已关闭"
                                         } else {
-                                            if (it.state == "open") "开启" else "已关闭"
+                                            if (det.state == "open") "开启" else "已关闭"
                                         },
                                         color = c.bg, fontSize = 11.sp,
                                         fontWeight = FontWeight.Medium)
                                 }
                                 Spacer(Modifier.width(8.dp))
-                                Text("#${it.number}", color = c.fgMuted, fontSize = 12.sp)
+                                Text("#${det.number}", color = c.fgMuted, fontSize = 12.sp)
                                 Spacer(Modifier.width(8.dp))
-                                Text(it.user, color = c.fgMuted, fontSize = 12.sp,
+                                Text(det.user, color = c.fgMuted, fontSize = 12.sp,
                                     modifier = if (onOpenUser != null)
-                                        Modifier.clickable { onOpenUser(it.user) } else Modifier)
+                                        Modifier.clickable { onOpenUser(det.user) } else Modifier)
                                 Spacer(Modifier.width(8.dp))
-                                Text(GitHubApi.timeAgo(it.createdAt), color = c.fgSubtle,
+                                Text(GitHubApi.timeAgo(det.createdAt), color = c.fgSubtle,
                                     fontSize = 12.sp)
                             }
-                            if (it.labels.isNotEmpty()) {
+                            if (det.labels.isNotEmpty()) {
                                 Spacer(Modifier.height(8.dp))
                                 Row {
-                                    it.labels.forEach { l ->
+                                    det.labels.forEach { l ->
                                         Box(Modifier.padding(end = 5.dp)
                                             .background(c.accentSubtle, RoundedCornerShape(10.dp))
                                             .padding(horizontal = 8.dp, vertical = 2.dp)) {
@@ -142,11 +142,11 @@ fun IssueDetailScreen(
                                     }
                                 }
                             }
-                            if (it.body.isNotBlank()) {
+                            if (det.body.isNotBlank()) {
                                 Spacer(Modifier.height(12.dp))
                                 Divider(color = c.borderMuted, thickness = 0.5.dp)
                                 Spacer(Modifier.height(10.dp))
-                                MarkdownText(it.body, onLink = null)
+                                MarkdownText(det.body, onLink = null)
                             }
                         }
                     }
@@ -161,7 +161,7 @@ fun IssueDetailScreen(
                             Text("还没有评论", color = c.fgSubtle, fontSize = 12.sp)
                         } }
                     } else {
-                        items(cs) { cm ->
+                        items(items = cs, key = { it.id }) { cm ->
                             Column(Modifier.fillMaxWidth().background(c.bg)
                                 .padding(horizontal = 14.dp, vertical = 11.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -230,7 +230,7 @@ fun IssueDetailScreen(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         OutlinedButton(onClick = {
                             MainScope().launch {
-                                val open = it.state != "open"
+                                val open = det.state != "open"
                                 val ok = try {
                                     withContext(Dispatchers.IO) {
                                         GitHubApi.setIssueState(ctx, owner, name, number, open)
@@ -239,7 +239,7 @@ fun IssueDetailScreen(
                                 if (ok) load() else note = "操作失败（需要写权限）"
                             }
                         }) {
-                            Text(if (it.state == "open") "关闭" else "重新开启", fontSize = 12.sp)
+                            Text(if (det.state == "open") "关闭" else "重新开启", fontSize = 12.sp)
                         }
                         OutlinedButton(onClick = {
                             com.hubmobile.app.compose.openWebStatic(

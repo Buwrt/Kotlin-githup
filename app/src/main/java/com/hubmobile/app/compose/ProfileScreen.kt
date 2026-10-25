@@ -312,7 +312,7 @@ fun ProfileScreen(
                 }
                 item { SectionTitle("我的仓库", icon = "repo") }
                 if (repos.isEmpty()) item { CenteredText("还没有仓库") }
-                else items(repos.take(20)) { r ->
+                else items(items = repos.take(20), key = { it.fullName }) { r ->
                     Box(Modifier.background(c.bg)) {
                         RepoRow(r, { onOpenRepo(r.ownerLogin, r.name) })
                     }

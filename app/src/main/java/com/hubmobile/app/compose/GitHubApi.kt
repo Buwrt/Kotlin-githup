@@ -106,6 +106,15 @@ object GitHubApi {
 
     fun hasToken(ctx: Context): Boolean = token(ctx).isNotBlank()
 
+    /** 写操作统一走这里：返回响应体；非 2xx 抛 ApiError */
+    private fun write(method: String, url: String, body: String?, ctx: Context): String {
+        val r = Http.request(method, url, body, headers(ctx))
+        if (r.code !in 200..299) {
+            throw ApiError(r.code, r.body.take(120))
+        }
+        return r.body
+    }
+
     private fun headers(ctx: Context): Map<String, String> {
         val h = HashMap<String, String>()
         h["Accept"] = "application/vnd.github+json"
@@ -565,13 +574,13 @@ object GitHubApi {
 
     /** 全部标为已读 */
     fun markAllRead(ctx: Context): Boolean = try {
-        Http.request("PUT", "$API/notifications", "{}", headers(ctx))
+        write("PUT", "$API/notifications", "{}", ctx)
         true
     } catch (e: Throwable) { false }
 
     /** 单条标为已读：thread id */
     fun markRead(ctx: Context, threadId: String): Boolean = try {
-        Http.request("PATCH", "$API/notifications/threads/$threadId", "{}", headers(ctx))
+        write("PATCH", "$API/notifications/threads/$threadId", "{}", ctx)
         true
     } catch (e: Throwable) { false }
 
@@ -815,15 +824,15 @@ object GitHubApi {
     /** 发评论。需要令牌，且该 issue 未锁定 */
     fun addComment(ctx: Context, owner: String, name: String, number: Int, body: String): Boolean {
         val json = JSONObject().put("body", body).toString()
-        Http.request("POST", "$API/repos/$owner/$name/issues/$number/comments", json, headers(ctx))
+        write("POST", "$API/repos/$owner/$name/issues/$number/comments", json, ctx)
         return true
     }
 
     /** 关闭 / 重开 issue */
     fun setIssueState(ctx: Context, owner: String, name: String, number: Int, open: Boolean): Boolean {
         val st = if (open) "open" else "closed"
-        Http.request("PATCH", "$API/repos/$owner/$name/issues/$number",
-            JSONObject().put("state", st).toString(), headers(ctx))
+        write("PATCH", "$API/repos/$owner/$name/issues/$number",
+            JSONObject().put("state", st).toString(), ctx)
         return true
     }
 
@@ -839,7 +848,7 @@ object GitHubApi {
             .put("description", description)
             .put("private", private)
             .put("auto_init", autoInit)
-        val s = Http.request("POST", "$API/user/repos", b.toString(), headers(ctx))
+        val s = write("POST", "$API/user/repos", b.toString(), ctx)
         return RepoInfo.from(JSONObject(s))
     }
 
@@ -852,8 +861,8 @@ object GitHubApi {
             .put("message", message)
             .put("content", contentBase64)
         if (branch.isNotBlank()) b.put("branch", branch)
-        Http.request("PUT", "$API/repos/$owner/$name/contents/${path.trim('/')}",
-            b.toString(), headers(ctx))
+        write("PUT", "$API/repos/$owner/$name/contents/${path.trim('/')}",
+            b.toString(), ctx)
         return true
     }
 
@@ -869,7 +878,7 @@ object GitHubApi {
             .put("body", body)
             .put("draft", draft)
             .put("prerelease", prerelease)
-        Http.request("POST", "$API/repos/$owner/$name/releases", b.toString(), headers(ctx))
+        write("POST", "$API/repos/$owner/$name/releases", b.toString(), ctx)
         return true
     }
 
@@ -883,21 +892,21 @@ object GitHubApi {
     }
 
     fun follow(ctx: Context, login: String): Boolean = try {
-        Http.request("PUT", "$API/user/following/$login", "", headers(ctx)); true
+        write("PUT", "$API/user/following/$login", "", ctx); true
     } catch (e: Throwable) { false }
 
     fun unfollow(ctx: Context, login: String): Boolean = try {
-        Http.request("DELETE", "$API/user/following/$login", null, headers(ctx))
+        write("DELETE", "$API/user/following/$login", null, ctx)
         true
     } catch (e: Throwable) { false }
 
     /** Star / 取消 Star */
     fun star(ctx: Context, owner: String, name: String): Boolean = try {
-        Http.request("PUT", "$API/user/starred/$owner/$name", "", headers(ctx)); true
+        write("PUT", "$API/user/starred/$owner/$name", "", ctx); true
     } catch (e: Throwable) { false }
 
     fun unstar(ctx: Context, owner: String, name: String): Boolean = try {
-        Http.request("DELETE", "$API/user/starred/$owner/$name", null, headers(ctx))
+        write("DELETE", "$API/user/starred/$owner/$name", null, ctx)
         true
     } catch (e: Throwable) { false }
 
@@ -921,7 +930,7 @@ object GitHubApi {
         if (blog != null) b.put("blog", blog)
         if (company != null) b.put("company", company)
         if (location != null) b.put("location", location)
-        Http.request("PATCH", "$API/user", b.toString(), headers(ctx))
+        write("PATCH", "$API/user", b.toString(), ctx)
         return true
     }
 
