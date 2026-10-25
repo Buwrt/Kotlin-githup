@@ -43,28 +43,29 @@ Daemon will be stopped at the end of the build
 > Task :app:checkDebugDuplicateClasses
 > Task :app:mergeDebugNativeLibs NO-SOURCE
 > Task :app:processDebugManifestForPackage
-> Task :app:stripDebugDebugSymbols NO-SOURCE
+> Task :app:mergeExtDexDebug
 > Task :app:mergeLibDexDebug
+> Task :app:stripDebugDebugSymbols NO-SOURCE
 > Task :app:processDebugResources
 > Task :app:validateSigningDebug
-> Task :app:mergeExtDexDebug
 > Task :app:writeDebugAppMetadata
 > Task :app:writeDebugSigningConfigVersions
-
-> Task :app:compileDebugKotlin FAILED
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/DetailScreen.kt:164:31 Type mismatch: inferred type is List<GitHubApi.CommentInfo> but Int was expected
+> Task :app:compileDebugKotlin
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/DetailScreen.kt:164:31 Cannot find a parameter with this name: items
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/DetailScreen.kt:164:43 No value passed for parameter 'count'
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/DetailScreen.kt:164:54 Unresolved reference: id
 e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/DetailScreen.kt:172:45 Unresolved reference: user
 e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/DetailScreen.kt:175:63 Unresolved reference: createdAt
 e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/DetailScreen.kt:178:40 Unresolved reference: body
 e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/DetailScreen.kt:180:53 Unresolved reference: body
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/GitHubApi.kt:843:30 None of the following functions can be called with the arguments supplied: 
-public constructor JSONObject(p0: String!) defined in org.json.JSONObject
-public constructor JSONObject(p0: (Mutable)Map<(raw) Any?, (raw) Any?>!) defined in org.json.JSONObject
-public constructor JSONObject(p0: JSONTokener!) defined in org.json.JSONObject
-e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/ProfileScreen.kt:315:28 Type mismatch: inferred type is List<RepoInfo> but Int was expected
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/ProfileScreen.kt:315:28 Cannot find a parameter with this name: items
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/ProfileScreen.kt:315:52 No value passed for parameter 'count'
+e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/ProfileScreen.kt:315:63 Unresolved reference: fullName
 e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/ProfileScreen.kt:317:33 Type mismatch: inferred type is Int but RepoInfo was expected
 e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/ProfileScreen.kt:317:51 Unresolved reference: ownerLogin
 e: file:///home/runner/work/Kotlin-githup/Kotlin-githup/app/src/main/java/com/hubmobile/app/compose/ProfileScreen.kt:317:65 Unresolved reference: name
+
+> Task :app:compileDebugKotlin FAILED
 
 FAILURE: Build failed with an exception.
 
@@ -270,5 +271,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 1m 44s
+BUILD FAILED in 2m 14s
 27 actionable tasks: 26 executed, 1 from cache
