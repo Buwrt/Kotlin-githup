@@ -111,6 +111,26 @@ android {
 
     buildFeatures {
         buildConfig true
+        /*
+         * 路线 B：启用 Compose 编译器。
+         *
+         * 注意这只是「允许写 Compose」，不代表界面已经原生化 ——
+         * assets/web 下的网页 UI 依然在，两者会长期共存：
+         *   已迁移的页面 → Compose（原生渲染）
+         *   未迁移的页面 → 继续走 WebView
+         * 这样做的好处是可以一个页面一个页面地换，不用等整体重写完才能发版。
+         */
+        compose true
+    }
+
+    /*
+     * Compose 编译器版本必须和 Kotlin 版本对得上，否则直接编译失败：
+     *   Kotlin 1.9.x  →  Compose Compiler 1.5.x
+     * 本项目 Kotlin 是 1.9.24，这里取 1.5.4。
+     * 哪天升到 Kotlin 2.0，编译器版本要一起升（且 AGP 要先到 8.2+）。
+     */
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.4'
     }
 }
 
@@ -132,14 +152,43 @@ if (ext.LOCK_NAME || ext.LOCK_CODE) {
 logger.lifecycle("[版本锁定] versionName=${android.defaultConfig.versionName} versionCode=${android.defaultConfig.versionCode}（已与 version.lock 核对一致）")
 
 /*
- * 依赖说明（Kotlin 迁移后）——
+ * 依赖说明（Kotlin 迁移后 · 路线 B 起有变化）——
  *
  *   Kotlin 插件会自动把 kotlin-stdlib 加进来，不需要手写这一行；
  *   写出来反而容易和插件自带的版本打架（两边版本不一致会报 duplicate class）。
  *
- *   除 stdlib 之外依然零第三方依赖：不引 OkHttp、不引 Gson、不引 androidx。
- *   代价见 docs/KOTLIN_MIGRATION.md 里的实测方法 —— stdlib 会让 APK 变大，
- *   这是引入 Kotlin 唯一躲不掉的成本，其余都可选。
+ *   语言迁移阶段（路线 A）做到的是：除 stdlib 之外零第三方依赖，
+ *   不引 OkHttp、不引 Gson、不引 androidx，网络层 Http.kt 是自己手写的。
+ *
+ *   路线 B（UI 原生化）必须打破这一条 —— Compose 本身就是 androidx 库，
+ *   没有「手写一套 Compose」的可能。所以从这里开始引入依赖；
+ *   换来的是界面不再由 WebView 渲染。
+ *
+ *   选依赖时仍然守住两条：
+ *     1. 不引 OkHttp / Retrofit / Gson —— 继续用 Http.kt + org.json（框架自带）
+ *     2. 不引 Coil / Glide —— 头像用 Http.requestRaw 拿字节后 BitmapFactory 解码
+ *   即：只在「UI 框架」这一处让步，能力层依然零第三方。
+ *
+ *   BOM 统一管理 Compose 各子库版本，避免 ui / material3 / runtime 互相打架。
  */
 dependencies {
+    def composeBom = platform('androidx.compose:compose-bom:2023.10.01')
+    implementation composeBom
+
+    // Compose 的宿主必须是 ComponentActivity（Manifest 里 MainActivity 是普通 Activity，
+    // 所以路线 B 另起 ComposeHostActivity，不去动 MainActivity 的现有行为）
+    implementation 'androidx.activity:activity-compose:1.8.2'
+
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.ui:ui-tooling-preview'
+    implementation 'androidx.compose.foundation:foundation'
+    implementation 'androidx.compose.material3:material3'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
+
+    // LaunchedEffect / Dispatchers.IO 需要：网络请求不能跑在主线程
+    implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }

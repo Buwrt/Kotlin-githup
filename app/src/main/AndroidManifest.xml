@@ -134,6 +134,24 @@
             android:label="@string/app_name" />
 
         <!--
+          路线 B：Compose 原生页面的宿主。
+
+          exported=false：目前只由 App 内部跳转进入，不接管外部链接
+          （外部 GitHub 链接仍然进 MainActivity 走网页版），
+          等原生页面覆盖够了再把 intent-filter 挪过来。
+
+          theme 沿用 AppTheme：Compose 用 setContent 渲染，
+          不需要 AppCompat 主题，但沿用可以保证状态栏/窗口背景与网页版一致。
+        -->
+        <activity
+            android:name=".compose.ComposeHostActivity"
+            android:exported="false"
+            android:theme="@style/AppTheme"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|keyboard|navigation|uiMode|density|fontScale"
+            android:windowSoftInputMode="adjustPan|stateHidden"
+            android:label="@string/app_name" />
+
+        <!--
           从构建产物 ZIP 里解压出的 APK 存在私有目录，
           通过它授予系统安装器临时读权限（不引入 androidx 依赖）。
         -->
