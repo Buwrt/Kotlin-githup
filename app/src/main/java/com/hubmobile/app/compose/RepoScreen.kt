@@ -118,7 +118,10 @@ fun RepoScreen(
             path = p
             loading = false
         } catch (e: Throwable) {
-            err = e.message ?: "加载失败"
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               err = errText(e)
             loading = false
         }
     }
@@ -139,13 +142,15 @@ fun RepoScreen(
             }.let { entries = it }
             loading = false
         } catch (e: Throwable) {
-            err = when (e) {
-                is ApiError -> when (e.code) {
-                    404 -> "仓库不存在，或你没有访问权限（私有仓库需要令牌）"
-                    403 -> "被 GitHub 限流了 —— 登录令牌可把额度从 60 次/小时提到 5000"
-                    else -> "请求失败（HTTP ${e.code}）"
-                }
-                else -> e.message ?: "加载失败"
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               err = when {
+                e is ApiError && e.code == 404 ->
+                    "仓库不存在，或你没有访问权限（私有仓库需要令牌）"
+                e is ApiError && e.code == 403 ->
+                    "被 GitHub 限流了 —— 登录令牌可把额度从 60 次/小时提到 5000"
+                else -> errText(e)
             }
             loading = false
         }
@@ -189,7 +194,7 @@ fun RepoScreen(
                     scope.launch {
                         runCatching { withContext(Dispatchers.IO) { GitHubApi.repo(ctx, owner, name) } }
                             .onSuccess { repo = it }
-                            .onFailure { err = it.message }
+                            .onFailure { err = errText(it) }
                         loading = false
                     }
                 }

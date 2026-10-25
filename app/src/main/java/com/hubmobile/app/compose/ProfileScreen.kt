@@ -258,9 +258,10 @@ fun ProfileScreen(
                 }
                 loading = false
             } catch (e: Throwable) {
-                err = if (e is ApiError) {
-                    if (e.code == 401) "未登录" else "HTTP ${e.code}"
-                } else e.message
+                    /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                       而且 CancellationException 的 message 恒为 null */
+                   if (e is kotlinx.coroutines.CancellationException) throw e
+                   err = if (e is ApiError && e.code == 401) "未登录" else errText(e)
                 loading = false
             }
         }
@@ -293,6 +294,13 @@ fun ProfileScreen(
                 }
                 item { SetRowItem("shield-check", "两步验证器", "") { onTotp() } }
                 item { SetRowItem("gear", "应用设置", "") { onSettings() } }
+            }
+        }
+        /* 同 HomeScreen：me 为 null 时不再强解引用，宁可提示也不崩 */
+        me == null -> CenteredText("加载失败，请重试") {
+            Button(onClick = { load() },
+                colors = ButtonDefaults.buttonColors(containerColor = c.primary)) {
+                Text("重试", color = Color.White)
             }
         }
         else -> {

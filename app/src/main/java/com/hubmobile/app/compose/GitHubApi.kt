@@ -221,7 +221,10 @@ object GitHubApi {
                继续往外抛会把整个进程带走（就是「闪退」）。 */
             null
         } catch (e: Throwable) {
-            null
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               null
         }
     }
 
@@ -302,7 +305,10 @@ object GitHubApi {
     fun me(ctx: Context): UserInfo? = try {
         UserInfo.from(JSONObject(get(ctx, "$API/user")))
     } catch (e: Throwable) {
-        null
+            /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+               而且 CancellationException 的 message 恒为 null */
+           if (e is kotlinx.coroutines.CancellationException) throw e
+           null
     }
 
     /**
@@ -319,7 +325,10 @@ object GitHubApi {
         val r: Http.Response = try {
             Http.request("GET", "$API/user", null, headers(ctx))
         } catch (e: Throwable) {
-            return MeResult(-1, null)          // 网络不可用
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               return MeResult(-1, null)          // 网络不可用
         }
         if (r.code == 401) return MeResult(401, null)   // 令牌无效 / 已过期
         if (r.code == 403) return MeResult(403, null)   // 被限流
@@ -327,7 +336,10 @@ object GitHubApi {
         return try {
             MeResult(200, UserInfo.from(JSONObject(r.body)))
         } catch (e: Throwable) {
-            MeResult(-2, null)                  // 返回体解析失败
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               MeResult(-2, null)                  // 返回体解析失败
         }
     }
 
@@ -1000,7 +1012,10 @@ object GitHubApi {
         Http.request("GET", "$API/user/following/$login", null, headers(ctx))
         true
     } catch (e: Throwable) {
-        if (e is ApiError && e.code == 404) false else throw e
+            /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+               而且 CancellationException 的 message 恒为 null */
+           if (e is kotlinx.coroutines.CancellationException) throw e
+           if (e is ApiError && e.code == 404) false else throw e
     }
 
     fun follow(ctx: Context, login: String): Boolean = try {
@@ -1026,7 +1041,10 @@ object GitHubApi {
         Http.request("GET", "$API/user/starred/$owner/$name", null, headers(ctx))
         true
     } catch (e: Throwable) {
-        if (e is ApiError && e.code == 404) false else throw e
+            /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+               而且 CancellationException 的 message 恒为 null */
+           if (e is kotlinx.coroutines.CancellationException) throw e
+           if (e is ApiError && e.code == 404) false else throw e
     }
 
     /* ---------- 仓库页操作：Star / 关注 / Fork ---------- */
@@ -1036,7 +1054,10 @@ object GitHubApi {
         Http.request("GET", "$API/repos/$owner/$name/subscription", null, headers(ctx))
         true
     } catch (e: Throwable) {
-        if (e is ApiError && e.code == 404) false else false
+            /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+               而且 CancellationException 的 message 恒为 null */
+           if (e is kotlinx.coroutines.CancellationException) throw e
+           if (e is ApiError && e.code == 404) false else false
     }
 
     /** 关注 / 取关仓库。PUT 订阅，DELETE 取消 */

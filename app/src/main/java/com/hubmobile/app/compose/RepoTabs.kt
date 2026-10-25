@@ -70,7 +70,10 @@ fun PullsScreen(
             closed = withContext(Dispatchers.IO) { GitHubApi.pulls(ctx, owner, name, "closed") }
             loading = false
         } catch (e: Throwable) {
-            err = if (e is ApiError) "HTTP ${e.code}" else e.message
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               err = errText(e)
             loading = false
         }
     }
@@ -149,7 +152,10 @@ fun ActionsScreen(owner: String, name: String, onOpen: (String) -> Unit) {
             list = withContext(Dispatchers.IO) { GitHubApi.runs(ctx, owner, name) }
             loading = false
         } catch (e: Throwable) {
-            err = if (e is ApiError) "HTTP ${e.code}" else e.message
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               err = errText(e)
             loading = false
         }
     }
@@ -220,7 +226,10 @@ fun ReleasesScreen(owner: String, name: String, onOpen: (String) -> Unit) {
             list = withContext(Dispatchers.IO) { GitHubApi.releases(ctx, owner, name) }
             loading = false
         } catch (e: Throwable) {
-            err = if (e is ApiError) "HTTP ${e.code}" else e.message
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               err = errText(e)
             loading = false
         }
     }
@@ -302,7 +311,10 @@ fun MoreScreen(owner: String, name: String, onOpen: (String) -> Unit) {
             contribs = withContext(Dispatchers.IO) { GitHubApi.contributors(ctx, owner, name) }
             loading = false
         } catch (e: Throwable) {
-            err = if (e is ApiError) "HTTP ${e.code}" else e.message
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               err = errText(e)
             loading = false
         }
     }
@@ -388,7 +400,10 @@ fun EventsList(login: String, onOpenRepo: (String, String) -> Unit, onOpenUser: 
             list = withContext(Dispatchers.IO) { GitHubApi.events(ctx, login) }
             loading = false
         } catch (e: Throwable) {
-            err = if (e is ApiError) "HTTP ${e.code}" else e.message
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               err = errText(e)
             loading = false
         }
     }

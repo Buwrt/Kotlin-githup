@@ -476,7 +476,10 @@ private fun AppRoot(
                             dm.enqueue(req)
                             updateTip = "已开始下载，完成后点通知安装"
                         } catch (e: Throwable) {
-                            updateTip = "下载失败，请到 Releases 手动下载"
+                                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                                   而且 CancellationException 的 message 恒为 null */
+                               if (e is kotlinx.coroutines.CancellationException) throw e
+                               updateTip = "下载失败，请到 Releases 手动下载"
                         }
                         update = null
                     }) { Text("立即更新", color = c.accent) }

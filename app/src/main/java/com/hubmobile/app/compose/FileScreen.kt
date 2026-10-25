@@ -86,13 +86,14 @@ fun FileScreen(
             }
             loading = false
         } catch (e: Throwable) {
-            err = when (e) {
-                is ApiError -> when (e.code) {
-                    403 -> "文件太大或触发限流 —— contents 接口上限 1MB"
-                    404 -> "文件不存在（可能分支不对）"
-                    else -> "HTTP ${e.code}"
-                }
-                else -> e.message
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               err = when {
+                e is ApiError && e.code == 403 ->
+                    "文件太大或触发限流 —— contents 接口上限 1MB"
+                e is ApiError && e.code == 404 -> "文件不存在（可能分支不对）"
+                else -> errText(e)
             }
             loading = false
         }
@@ -128,6 +129,9 @@ fun FileScreen(
                 TextButton(onClick = {
                     onOpenWeb("https://github.com/$owner/$name/blob/$branch/${path.trim('/')}")
                 }) { Text("用浏览器打开", color = LocalHubColors.current.accent) }
+            }
+            fc == null -> CenteredText("加载失败，请重试") {
+                TextButton(onClick = { load() }) { Text("重试") }
             }
             else -> {
                 val f = fc!!
@@ -220,7 +224,10 @@ fun IssuesScreen(
             closed = withContext(Dispatchers.IO) { GitHubApi.issues(ctx, owner, name, "closed") }
             loading = false
         } catch (e: Throwable) {
-            err = when (e) { is ApiError -> "HTTP ${e.code}"; else -> e.message }
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               err = errText(e)
             loading = false
         }
     }

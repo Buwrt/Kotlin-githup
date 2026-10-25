@@ -75,6 +75,42 @@ private const val PAGE_PAD = 12
 
 /* ---------------- 通用件 ---------------- */
 
+/**
+ * 把异常转成能显示给用户的一句话。
+ *
+ * ⚠️ 为什么必须有这个函数：以前各处都写 `err = e.message`，
+ * 而 **`e.message` 是 String?，经常是 null** —— 最典型的是
+ * `CancellationException`（协程取消时抛，message 恒为 null），
+ * 以及不少 NPE / 解析异常。
+ *
+ * 一旦 err 变成 null，下面那串 `when` 就会漏到 else 分支去强解引用
+ * 还没赋值的数据（`val u = me!!`），直接 NPE 崩进程 ——
+ * 表现就是「界面还在转圈，然后 App 没了」。
+ *
+ * 这里保证：
+ *   1. 返回值一定非空（拿不到文案就退回异常类名）
+ *   2. ApiError 按 HTTP 状态码给出人话
+ */
+fun errText(e: Throwable): String {
+    if (e is ApiError) {
+        return when (e.code) {
+            401 -> "令牌无效或已过期"
+            403 -> "已被限流（每小时上限），稍后再试"
+            404 -> "内容不存在或无权访问"
+            -1 -> "网络不可用，请检查连接"
+            else -> "HTTP ${e.code}"
+        }
+    }
+    val m = e.message
+    if (!m.isNullOrBlank()) return m
+    val cause = e.cause
+    val cm = cause?.message
+    if (!cm.isNullOrBlank()) return cm
+    return e.javaClass.simpleName ?: "加载失败"
+}
+
+
+
 @Composable
 fun CenteredLoading(modifier: Modifier = Modifier) {
     Box(modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
@@ -329,10 +365,10 @@ fun HomeScreen(
                 repos = (if (noFork.isNotEmpty()) noFork else all).take(30)
                 loading = false
             } catch (e: Throwable) {
-                err = when (e) {
-                    is ApiError -> if (e.code == 401) "令牌无效或已过期" else "HTTP ${e.code}"
-                    else -> e.message
-                }
+                    /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                       而且 CancellationException 的 message 恒为 null */
+                   if (e is kotlinx.coroutines.CancellationException) throw e
+                   err = errText(e)
                 loading = false
             }
         }
@@ -349,6 +385,19 @@ fun HomeScreen(
             }
         }
         err != null -> CenteredText(err!!) { TextButton(onClick = { load() }) { Text("重试") } }
+        /*
+         * ⚠️ 最后一道安全网：me 为 null 时不再强解引用。
+         *
+         * 以前写的是 `val u = me!!` —— 只要走到这个分支而 me 还是 null
+         * （比如 catch 里把 err 设成了 null），立刻 NPE 崩进程。
+         * 现在宁可显示一句提示，也绝不崩。
+         */
+        me == null -> CenteredText("加载失败，请重试") {
+            Button(onClick = { load() },
+                colors = ButtonDefaults.buttonColors(containerColor = c.primary)) {
+                Text("重试", color = Color.White)
+            }
+        }
         else -> {
             val u = me!!
             LazyColumn(
@@ -464,10 +513,10 @@ fun ExploreScreen(onOpenRepo: (String, String) -> Unit) {
             list = withContext(Dispatchers.IO) { GitHubApi.trending(ctx, range, lang) }
             loading = false
         } catch (e: Throwable) {
-            err = when (e) {
-                is ApiError -> if (e.code == 403) "被限流了，稍后再试" else "HTTP ${e.code}"
-                else -> e.message
-            }
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               err = errText(e)
             loading = false
         }
     }
@@ -511,10 +560,10 @@ fun NotificationsScreen(onOpen: (String) -> Unit, onMarkAllRead: (() -> Unit)? =
             list = withContext(Dispatchers.IO) { GitHubApi.notifications(ctx) }
             loading = false
         } catch (e: Throwable) {
-            err = when (e) {
-                is ApiError -> if (e.code == 401) "需要登录才能查看通知" else "HTTP ${e.code}"
-                else -> e.message
-            }
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               err = errText(e)
             loading = false
         }
     }
@@ -623,9 +672,11 @@ fun SearchScreen(
                 }
                 loading = false
             } catch (e: Throwable) {
-                err = if (e is ApiError) {
-                    if (e.code == 403) "被限流了，稍后再试" else "HTTP ${e.code}"
-                } else e.message
+                    /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                       而且 CancellationException 的 message 恒为 null */
+                   if (e is kotlinx.coroutines.CancellationException) throw e
+                   err = if (e is ApiError && e.code == 403)
+                    "被限流了，稍后再试" else errText(e)
                 loading = false
             }
         }
@@ -720,9 +771,11 @@ fun UserScreen(
             repos = withContext(Dispatchers.IO) { GitHubApi.userRepos(ctx, login) }
             loading = false
         } catch (e: Throwable) {
-            err = if (e is ApiError) {
-                if (e.code == 404) "用户不存在" else "HTTP ${e.code}"
-            } else e.message
+                /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                   而且 CancellationException 的 message 恒为 null */
+               if (e is kotlinx.coroutines.CancellationException) throw e
+               err = if (e is ApiError && e.code == 404)
+                "用户不存在" else errText(e)
             loading = false
         }
     }

@@ -75,15 +75,18 @@ fun IssueDetailScreen(
         MainScope().launch {
             try {
                 d = withContext(Dispatchers.IO) { GitHubApi.issueDetail(ctx, owner, name, number) }
+                if (d == null) { err = "内容不存在或无权访问"; loading = false; return@launch }
                 avatar = withContext(Dispatchers.IO) {
                     GitHubApi.loadBitmap(ctx, d!!.userAvatar)
                 }
                 cs = withContext(Dispatchers.IO) { GitHubApi.comments(ctx, owner, name, number) }
                 loading = false
             } catch (e: Throwable) {
-                err = if (e is ApiError) {
-                    if (e.code == 404) "不存在（可能没权限看私有仓库）" else "HTTP ${e.code}"
-                } else e.message
+                    /* 协程取消必须原样抛出：吞掉它会破坏结构化并发，
+                       而且 CancellationException 的 message 恒为 null */
+                   if (e is kotlinx.coroutines.CancellationException) throw e
+                   err = if (e is ApiError && e.code == 404)
+                    "不存在（可能没权限看私有仓库）" else errText(e)
                 loading = false
             }
         }
@@ -95,6 +98,9 @@ fun IssueDetailScreen(
         when {
             loading -> { SkeletonList(3); CenteredLoading() }
             err != null -> CenteredText(err!!) { TextButton(onClick = { load() }) { Text("重试") } }
+            d == null -> CenteredText("加载失败，请重试") {
+                TextButton(onClick = { load() }) { Text("重试") }
+            }
             else -> {
                 val det = d!!
                 LazyColumn(Modifier.weight(1f),
