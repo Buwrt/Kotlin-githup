@@ -277,7 +277,8 @@ fun HomeScreen(
     onOpenRepo: (String, String) -> Unit,
     onOpenUser: (String) -> Unit,
     onNeedToken: () -> Unit,
-    onNewRepo: () -> Unit
+    onNewRepo: () -> Unit,
+    onQuick: (String) -> Unit = {}
 ) {
     val ctx = LocalContext.current
     val c = LocalHubColors.current
@@ -345,7 +346,7 @@ fun HomeScreen(
                                 }
                                 HubIcon("chevron-right", Modifier.size(16.dp), c.fgSubtle)
                             }
-                            QuickGrid(u.login)
+                            QuickGrid(u.login, onQuick)
                         }
                     }
                 }
@@ -384,20 +385,26 @@ fun HomeScreen(
 
 /** 快捷宫格：对齐 page-home.js 的 quickGrid() —— 3 列 × 2 行 */
 @Composable
-private fun QuickGrid(login: String) {
+private fun QuickGrid(login: String, onQuick: (String) -> Unit) {
     val c = LocalHubColors.current
+    // 对齐 page-home.js 的 quickGrid()：键名用 path，这里简化成标记
     val items = listOf(
-        "repo" to "我的仓库", "star" to "我的 Star", "issue" to "我的议题",
-        "pr" to "我的 PR", "code-square" to "我的 Gist", "organization" to "组织"
+        "repo" to "我的仓库" to "repos",
+        "star" to "我的 Star" to "stars",
+        "issue" to "我的议题" to "issues",
+        "pr" to "我的 PR" to "pulls",
+        "code-square" to "我的 Gist" to "gists",
+        "organization" to "组织" to "orgs"
     )
     Column {
         Divider(color = c.borderMuted, thickness = 0.5.dp)
         items.chunked(3).forEach { row ->
             Row(Modifier.fillMaxWidth()) {
-                row.forEach { (icon, label) ->
+                row.forEach { (pair, key) ->
+                    val (icon, label) = pair
                     Box(
                         Modifier.weight(1f)
-                            .clickable { }
+                            .clickable { onQuick(key) }
                             .padding(vertical = 14.dp),
                         Alignment.Center
                     ) {
@@ -465,7 +472,7 @@ fun ExploreScreen(onOpenRepo: (String, String) -> Unit) {
 /* ---------------- 通知 ---------------- */
 
 @Composable
-fun NotificationsScreen(onOpen: (String) -> Unit) {
+fun NotificationsScreen(onOpen: (String) -> Unit, onMarkAllRead: (() -> Unit)? = null) {
     val ctx = LocalContext.current
     val c = LocalHubColors.current
     var list by remember { mutableStateOf<List<GitHubApi.NotifInfo>>(emptyList()) }
@@ -486,6 +493,20 @@ fun NotificationsScreen(onOpen: (String) -> Unit) {
         }
     }
 
+    val unread = list.count { it.unread }
+    Column(Modifier.fillMaxSize().background(c.canvas)) {
+        if (unread > 0 && onMarkAllRead != null) {
+            Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                Text("$unread 条未读", color = c.fgMuted, fontSize = 12.sp)
+                Spacer(Modifier.weight(1f))
+                OutlinedButton(onClick = onMarkAllRead,
+                    modifier = Modifier.height(30.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp)) {
+                    Text("全部标为已读", fontSize = 11.sp)
+                }
+            }
+        }
     when {
         loading -> SkeletonList(4)
         err != null -> CenteredText(err!!)
@@ -494,6 +515,7 @@ fun NotificationsScreen(onOpen: (String) -> Unit) {
             contentPadding = PaddingValues(bottom = 24.dp)) {
             items(list) { n -> NotifRow(n) { onOpen(GitHubApi.notifWebUrl(n)) } }
         }
+    }
     }
 }
 
@@ -537,27 +559,46 @@ private fun NotifRow(n: GitHubApi.NotifInfo, onClick: () -> Unit) {
 
 /* ---------------- 搜索 ---------------- */
 
-@Composable
-fun SearchScreen(onOpenRepo: (String, String) -> Unit, onOpenUser: (String) -> Unit) {
+fun SearchScreen(
+    onOpenRepo: (String, String) -> Unit,
+    onOpenUser: (String) -> Unit,
+    onOpenWeb: (String) -> Unit = {}
+) {
     val ctx = LocalContext.current
     val c = LocalHubColors.current
     var q by remember { mutableStateOf("") }
-    var result by remember { mutableStateOf<GitHubApi.SearchResult?>(null) }
+    var tab by remember { mutableStateOf(0) }
+    var repos by remember { mutableStateOf<GitHubApi.SearchResult?>(null) }
+    var users by remember { mutableStateOf<GitHubApi.SearchUsersResult?>(null) }
     var loading by remember { mutableStateOf(false) }
     var err by remember { mutableStateOf<String?>(null) }
 
-    fun search() {
-        if (q.isBlank()) return
+    /*
+     * 网页版搜索支持：仓库 / 用户组织，以及直接粘贴一条 GitHub 链接
+     * （https://github.com/owner/repo、.../issues/123 等）自动识别跳转。
+     * 这里照做：输入以 http 开头时先走链接识别。
+     */
+    fun isUrl(s: String): Boolean =
+        s.startsWith("http://") || s.startsWith("https://")
+
+    fun run() {
+        val text = q.trim()
+        if (text.isBlank()) return
+        if (isUrl(text)) { onOpenWeb(text); return }
         loading = true; err = null
         MainScope().launch {
             try {
-                result = withContext(Dispatchers.IO) { GitHubApi.searchRepos(ctx, q) }
+                if (tab == 0) repos = withContext(Dispatchers.IO) {
+                    GitHubApi.searchRepos(ctx, text)
+                }
+                else users = withContext(Dispatchers.IO) {
+                    GitHubApi.searchUsers(ctx, text)
+                }
                 loading = false
             } catch (e: Throwable) {
-                err = when (e) {
-                    is ApiError -> if (e.code == 403) "被限流了，稍后再试" else "HTTP ${e.code}"
-                    else -> e.message
-                }
+                err = if (e is ApiError) {
+                    if (e.code == 403) "被限流了，稍后再试" else "HTTP ${e.code}"
+                } else e.message
                 loading = false
             }
         }
@@ -566,7 +607,7 @@ fun SearchScreen(onOpenRepo: (String, String) -> Unit, onOpenUser: (String) -> U
     Column(Modifier.fillMaxSize().background(c.canvas)) {
         OutlinedTextField(
             value = q, onValueChange = { q = it },
-            placeholder = { Text("搜索仓库", fontSize = 13.sp) },
+            placeholder = { Text("搜索仓库 / 用户，或粘贴 GitHub 链接", fontSize = 13.sp) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 10.dp),
@@ -576,32 +617,47 @@ fun SearchScreen(onOpenRepo: (String, String) -> Unit, onOpenUser: (String) -> U
                 unfocusedBorderColor = c.border
             )
         )
-        OutlinedButton(onClick = { search() },
-            modifier = Modifier.padding(horizontal = 12.dp)) {
-            Text("搜索", fontSize = 12.sp)
+        Row(Modifier.padding(horizontal = 12.dp)) {
+            HubChip("仓库", tab == 0) { tab = 0 }
+            HubChip("用户 / 组织", tab == 1) { tab = 1 }
+            Spacer(Modifier.width(8.dp))
+            OutlinedButton(onClick = { run() },
+                modifier = Modifier.height(32.dp),
+                contentPadding = PaddingValues(horizontal = 10.dp)) {
+                Text("搜索", fontSize = 12.sp)
+            }
         }
         Spacer(Modifier.height(6.dp))
         when {
             loading -> SkeletonList(4)
-            err != null -> CenteredText(err!!) { TextButton(onClick = { search() }) { Text("重试") } }
-            result == null -> CenteredText("输入关键词搜索仓库")
-            else -> {
-                val res = result!!
+            err != null -> CenteredText(err!!) { TextButton(onClick = { run() }) { Text("重试") } }
+            tab == 0 && repos == null -> CenteredText("输入关键词搜索仓库")
+            tab == 1 && users == null -> CenteredText("输入关键词搜索用户")
+            tab == 0 -> {
+                val res = repos!!
                 Text("共 ${res.total} 个结果", color = c.fgMuted, fontSize = 11.sp,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
                 RepoList(res.items) { onOpenRepo(it.ownerLogin, it.name) }
+            }
+            else -> {
+                val res = users!!
+                Text("共 ${res.total} 个结果", color = c.fgMuted, fontSize = 11.sp,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp))
+                LazyColumn(Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(bottom = 24.dp)) {
+                    items(res.items) { u -> UserRow(u) { onOpenUser(u.login) } }
+                }
             }
         }
     }
 }
 
-/* ---------------- 我的（profile） ---------------- */
 
-@Composable
 fun ProfileScreen(
     onOpenRepo: (String, String) -> Unit,
     onOpenUser: (String) -> Unit,
-    onSettings: () -> Unit
+    onSettings: () -> Unit,
+    onOpenWeb: (String) -> Unit = {}
 ) {
     val ctx = LocalContext.current
     val c = LocalHubColors.current
@@ -622,13 +678,20 @@ fun ProfileScreen(
             }
             loading = false
         } catch (e: Throwable) {
-            err = when (e) {
-                is ApiError -> if (e.code == 401) "未登录" else "HTTP ${e.code}"
-                else -> e.message
-            }
+            err = if (e is ApiError) {
+                if (e.code == 401) "未登录" else "HTTP ${e.code}"
+            } else e.message
             loading = false
         }
     }
+
+    /*
+     * 条目顺序对齐 page-user.js 的 P.profile：
+     *   编辑资料 / 更换头像 / 新建仓库
+     *   两步验证器 / 我的仓库 / 我的 Star / 我的议题 / 我的拉取请求 / 我的 Gist / 我的组织 / 通知
+     *   设置 / API 配额
+     */
+    data class Item(val icon: String, val title: String, val sub: String, val act: () -> Unit)
 
     when {
         loading -> SkeletonList(3)
@@ -640,10 +703,31 @@ fun ProfileScreen(
         }
         else -> {
             val u = me!!
+            val items = listOf(
+                Item("person", "编辑个人资料", "需网页端") {
+                    onOpenWeb("https://github.com/settings/profile")
+                },
+                Item("person", "更换头像", "需网页端") {
+                    onOpenWeb("https://github.com/settings/profile")
+                },
+                Item("plus", "新建仓库", "") {
+                    onOpenWeb("https://github.com/new")
+                },
+                Item("shield-check", "两步验证器", "") { onOpenWeb("https://github.com/settings/security") },
+                Item("repo", "我的仓库", "") { onOpenUser(u.login) },
+                Item("star", "我的 Star", "") { onOpenUser(u.login) },
+                Item("issue", "我的议题", "") { onOpenWeb("https://github.com/issues") },
+                Item("pr", "我的拉取请求", "") { onOpenWeb("https://github.com/pulls") },
+                Item("code-square", "我的 Gist", "") { onOpenWeb("https://gist.github.com/${u.login}") },
+                Item("organization", "我的组织", "") { onOpenWeb("https://github.com/settings/organizations") },
+                Item("bell", "通知", "") { onOpenWeb("https://github.com/notifications") },
+                Item("gear", "设置", "") { onSettings() },
+                Item("graph", "API 配额", "") { onSettings() }
+            )
             LazyColumn(Modifier.fillMaxSize().background(c.canvas),
                 contentPadding = PaddingValues(bottom = 24.dp)) {
                 item {
-                    Column(Modifier.padding(PAGE_PAD.dp)) {
+                    Column(Modifier.padding(12.dp)) {
                         HubCard {
                             Column(Modifier.padding(16.dp)) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -670,16 +754,26 @@ fun ProfileScreen(
                                     Text("关注 ${GitHubApi.num(u.following)}",
                                         color = c.fgMuted, fontSize = 12.sp)
                                 }
-                                Spacer(Modifier.height(12.dp))
-                                OutlinedButton(onClick = onSettings,
-                                    modifier = Modifier.fillMaxWidth()) {
-                                    HubIcon("gear", Modifier.size(14.dp), c.fgMuted)
-                                    Spacer(Modifier.width(6.dp))
-                                    Text("设置", fontSize = 12.sp)
-                                }
                             }
                         }
                     }
+                }
+                items(items) { it0 ->
+                    Row(Modifier.fillMaxWidth().background(c.bg)
+                        .clickable { it0.act() }
+                        .padding(horizontal = 14.dp, vertical = 13.dp),
+                        verticalAlignment = Alignment.CenterVertically) {
+                        HubIcon(it0.icon, Modifier.size(16.dp), c.fgMuted)
+                        Spacer(Modifier.width(12.dp))
+                        Text(it0.title, color = c.fg, fontSize = 13.sp,
+                            modifier = Modifier.weight(1f))
+                        if (it0.sub.isNotBlank()) {
+                            Text(it0.sub, color = c.fgSubtle, fontSize = 11.sp)
+                            Spacer(Modifier.width(6.dp))
+                        }
+                        HubIcon("chevron-right", Modifier.size(14.dp), c.fgSubtle)
+                    }
+                    Divider(color = c.borderMuted, thickness = 0.5.dp)
                 }
                 item { SectionTitle("我的仓库", icon = "repo") }
                 if (repos.isEmpty()) item { CenteredText("还没有仓库") }
@@ -693,130 +787,208 @@ fun ProfileScreen(
     }
 }
 
-/* ---------------- 用户页 ---------------- */
 
-@Composable
-fun UserScreen(
-    login: String,
-    onOpenRepo: (String, String) -> Unit,
-    onBack: () -> Unit
+fun SettingsScreen(
+    onOpenWeb: (String) -> Unit = {},
+    onLogout: () -> Unit = {},
+    onRestart: () -> Unit = {}
 ) {
-    val ctx = LocalContext.current
-    val c = LocalHubColors.current
-    var u by remember { mutableStateOf<GitHubApi.UserInfo?>(null) }
-    var repos by remember { mutableStateOf<List<RepoInfo>>(emptyList()) }
-    var avatar by remember { mutableStateOf<android.graphics.Bitmap?>(null) }
-    var loading by remember { mutableStateOf(true) }
-    var err by remember { mutableStateOf<String?>(null) }
-
-    LaunchedEffect(login) {
-        loading = true; err = null
-        try {
-            val info = withContext(Dispatchers.IO) { GitHubApi.user(ctx, login) }
-            u = info
-            avatar = withContext(Dispatchers.IO) { GitHubApi.loadBitmap(ctx, info.avatarUrl) }
-            repos = withContext(Dispatchers.IO) { GitHubApi.userRepos(ctx, login) }
-            loading = false
-        } catch (e: Throwable) {
-            err = when (e) { is ApiError -> if (e.code == 404) "用户不存在" else "HTTP ${e.code}"
-                else -> e.message }
-            loading = false
-        }
-    }
-
-    when {
-        loading -> SkeletonList(3)
-        err != null -> CenteredText(err!!)
-        else -> {
-            val info = u!!
-            LazyColumn(Modifier.fillMaxSize().background(c.canvas),
-                contentPadding = PaddingValues(bottom = 24.dp)) {
-                item {
-                    Column(Modifier.padding(PAGE_PAD.dp)) {
-                        HubCard {
-                            Column(Modifier.padding(16.dp)) {
-                                Avatar(avatar, 56)
-                                Spacer(Modifier.height(10.dp))
-                                Text(info.name.ifBlank { info.login }, color = c.fg,
-                                    fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                                Text("@${info.login}", color = c.fgMuted, fontSize = 12.sp)
-                                if (info.bio.isNotBlank()) {
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(info.bio, color = c.fgMuted, fontSize = 12.sp)
-                                }
-                                Spacer(Modifier.height(10.dp))
-                                Row {
-                                    Text("${GitHubApi.num(info.publicRepos)} 仓库",
-                                        color = c.fgMuted, fontSize = 12.sp)
-                                    Spacer(Modifier.width(14.dp))
-                                    Text("${GitHubApi.num(info.followers)} 粉丝",
-                                        color = c.fgMuted, fontSize = 12.sp)
-                                    Spacer(Modifier.width(14.dp))
-                                    Text("关注 ${GitHubApi.num(info.following)}",
-                                        color = c.fgMuted, fontSize = 12.sp)
-                                }
-                            }
-                        }
-                    }
-                }
-                item { SectionTitle("仓库", icon = "repo") }
-                if (repos.isEmpty()) item { CenteredText("还没有公开仓库") }
-                else items(repos) { r ->
-                    Box(Modifier.background(c.bg)) { RepoRow(r, { onOpenRepo(r.ownerLogin, r.name) }) }
-                }
-            }
-        }
-    }
-}
-
-/* ---------------- 设置 / 令牌 ---------------- */
-
-@Composable
-fun SettingsScreen(onSaved: () -> Unit) {
     val ctx = LocalContext.current
     val c = LocalHubColors.current
     var token by remember { mutableStateOf(SecurePrefs.get(ctx, GitHubApi.TOKEN_KEY, "")) }
     var tip by remember { mutableStateOf<String?>(null) }
+    var theme by remember { mutableStateOf(Prefs.theme(ctx)) }
+    var font by remember { mutableStateOf(Prefs.codeFont(ctx)) }
+    var start by remember { mutableStateOf(Prefs.startTab(ctx)) }
+    var quota by remember { mutableStateOf<GitHubApi.RateLimit?>(null) }
+    var showTheme by remember { mutableStateOf(false) }
+    var showFont by remember { mutableStateOf(false) }
+    var showStart by remember { mutableStateOf(false) }
 
-    Column(Modifier.fillMaxSize().background(c.canvas).padding(16.dp)) {
-        Text("访问令牌", color = c.fg, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(8.dp))
-        Text("令牌存在本机 Keystore 加密区里，不会上传。需要 repo / read:user 权限；"
-            + "不填只能看公开仓库，且限流 60 次/小时。",
-            color = c.fgMuted, fontSize = 12.sp)
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = token, onValueChange = { token = it.trim() },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            placeholder = { Text("ghp_ 或 github_pat_ 开头", fontSize = 12.sp) },
-            modifier = Modifier.fillMaxWidth(),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = c.fg, unfocusedTextColor = c.fg,
-                cursorColor = c.accent, focusedBorderColor = c.accent,
-                unfocusedBorderColor = c.border
-            )
-        )
-        Spacer(Modifier.height(12.dp))
-        Row {
-            Button(onClick = {
-                SecurePrefs.put(ctx, GitHubApi.TOKEN_KEY, token)
-                tip = "已保存"; onSaved()
-            }, colors = ButtonDefaults.buttonColors(containerColor = c.primary)) {
-                Text("保存", color = Color.White)
+    // 进设置时顺手拉一次配额
+    LaunchedEffect(Unit) {
+        quota = try {
+            withContext(Dispatchers.IO) { GitHubApi.rateLimit(ctx) }
+        } catch (e: Throwable) { null }
+    }
+
+    /** 设置行：图标 + 标题 + 当前值 + 箭头 */
+    @Composable
+    fun SetRow(icon: String, title: String, value: String, onClick: () -> Unit) {
+        Row(Modifier.fillMaxWidth().background(c.bg).clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            HubIcon(icon, Modifier.size(16.dp), c.fgMuted)
+            Spacer(Modifier.width(12.dp))
+            Text(title, color = c.fg, fontSize = 13.sp, modifier = Modifier.weight(1f))
+            if (value.isNotBlank()) {
+                Text(value, color = c.fgSubtle, fontSize = 11.sp)
+                Spacer(Modifier.width(6.dp))
             }
-            Spacer(Modifier.width(10.dp))
-            TextButton(onClick = {
-                SecurePrefs.put(ctx, GitHubApi.TOKEN_KEY, "")
-                token = ""; tip = "已清除"; onSaved()
-            }) { Text("清除", color = c.danger) }
+            HubIcon("chevron-right", Modifier.size(14.dp), c.fgSubtle)
         }
-        if (tip != null) {
-            Spacer(Modifier.height(8.dp))
-            Text(tip!!, color = c.success, fontSize = 12.sp)
+        Divider(color = c.borderMuted, thickness = 0.5.dp)
+    }
+
+    LazyColumn(Modifier.fillMaxSize().background(c.canvas),
+        contentPadding = PaddingValues(bottom = 24.dp)) {
+
+        item {
+            Column(Modifier.padding(12.dp)) {
+                HubCard {
+                    Column(Modifier.padding(14.dp)) {
+                        Text("访问令牌", color = c.fg, fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold)
+                        Spacer(Modifier.height(6.dp))
+                        Text("令牌存在本机 Keystore 加密区里，不会上传。",
+                            color = c.fgMuted, fontSize = 11.sp)
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = token, onValueChange = { token = it.trim() },
+                            singleLine = true,
+                            visualTransformation = PasswordVisualTransformation(),
+                            placeholder = { Text("ghp_ 或 github_pat_ 开头", fontSize = 12.sp) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = c.fg, unfocusedTextColor = c.fg,
+                                cursorColor = c.accent, focusedBorderColor = c.accent,
+                                unfocusedBorderColor = c.border
+                            )
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        Row {
+                            Button(onClick = {
+                                SecurePrefs.put(ctx, GitHubApi.TOKEN_KEY, token)
+                                tip = "已保存"
+                            }, colors = ButtonDefaults.buttonColors(containerColor = c.primary)) {
+                                Text("保存", color = Color.White)
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            TextButton(onClick = {
+                                onOpenWeb("https://github.com/settings/tokens/new?" +
+                                    "scopes=repo,read:user,workflow&description=githup")
+                            }) { Text("去创建", color = c.accent, fontSize = 12.sp) }
+                        }
+                        if (tip != null) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(tip!!, color = c.success, fontSize = 11.sp)
+                        }
+                    }
+                }
+            }
+        }
+
+        item { SectionTitle("外观") }
+        item {
+            val text = when (theme) { "light" -> "浅色"; "dark" -> "深色"; else -> "跟随系统" }
+            SetRow("paintbrush", "主题外观", text) { showTheme = true }
+            SetRow("typography", "代码字号", "${font}px") { showFont = true }
+            SetRow("home", "启动页", when (start) {
+                "notifications" -> "通知"; "explore" -> "探索"; "profile" -> "我的"; else -> "首页"
+            }) { showStart = true }
+        }
+
+        item { SectionTitle("账号") }
+        item {
+            val q = quota
+            SetRow("graph", "API 配额",
+                if (q != null) "剩余 ${q.remaining} / ${q.limit}" else "读取中") {
+                MainScope().launch {
+                    quota = try {
+                        withContext(Dispatchers.IO) { GitHubApi.rateLimit(ctx) }
+                    } catch (e: Throwable) { null }
+                }
+            }
+            SetRow("book", "两步验证器", "") {
+                onOpenWeb("https://github.com/settings/security")
+            }
+            SetRow("logout", "退出登录", "") {
+                SecurePrefs.put(ctx, GitHubApi.TOKEN_KEY, "")
+                token = ""
+                onLogout()
+            }
+        }
+
+        item { SectionTitle("关于") }
+        item {
+            SetRow("sync", "检查更新", "") {
+                onOpenWeb("https://github.com/Buwrt/githup/releases/latest")
+            }
+            SetRow("alert", "清除缓存", "") {
+                // WebView 缓存 + 应用缓存目录，尽力清
+                try { ctx.cacheDir.deleteRecursively() } catch (e: Throwable) {}
+                tip = "缓存已清除"
+            }
+            SetRow("mark-github", "源码仓库", "") {
+                onOpenWeb("https://github.com/Buwrt/Kotlin-githup")
+            }
         }
     }
+
+    // ---- 三个选择弹层 ----
+    if (showTheme) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showTheme = false },
+            title = { Text("主题外观", fontSize = 15.sp) },
+            text = {
+                Column {
+                    listOf("auto" to "跟随系统", "light" to "浅色", "dark" to "深色").forEach { (k, label) ->
+                        Row(Modifier.fillMaxWidth().clickable {
+                            theme = k; Prefs.setTheme(ctx, k); showTheme = false; onRestart()
+                        }.padding(vertical = 12.dp)) {
+                            Text(label, color = c.fg, fontSize = 13.sp,
+                                modifier = Modifier.weight(1f))
+                            if (theme == k) Text("✓", color = c.accent, fontSize = 13.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+    if (showFont) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showFont = false },
+            title = { Text("代码字号", fontSize = 15.sp) },
+            text = {
+                Column {
+                    listOf(12, 13, 15, 17).forEach { v ->
+                        Row(Modifier.fillMaxWidth().clickable {
+                            font = v; Prefs.setCodeFont(ctx, v); showFont = false
+                        }.padding(vertical = 12.dp)) {
+                            Text("${v}px", color = c.fg, fontSize = 13.sp,
+                                modifier = Modifier.weight(1f))
+                            if (font == v) Text("✓", color = c.accent, fontSize = 13.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
+    if (showStart) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showStart = false },
+            title = { Text("启动页", fontSize = 15.sp) },
+            text = {
+                Column {
+                    listOf("home" to "首页", "notifications" to "通知",
+                        "explore" to "探索", "profile" to "我的").forEach { (k, label) ->
+                        Row(Modifier.fillMaxWidth().clickable {
+                            start = k; Prefs.setStartTab(ctx, k); showStart = false
+                        }.padding(vertical = 12.dp)) {
+                            Text(label, color = c.fg, fontSize = 13.sp,
+                                modifier = Modifier.weight(1f))
+                            if (start == k) Text("✓", color = c.accent, fontSize = 13.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = {}
+        )
+    }
 }
+
 
 /** 保留给早期页面的兼容函数 */
 internal fun compact(n: Int): String = GitHubApi.num(n)

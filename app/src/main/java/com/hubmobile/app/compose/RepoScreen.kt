@@ -68,9 +68,9 @@ import kotlinx.coroutines.withContext
  *   3. 它把「网络 + 图片 + 列表 + 状态机」四件事都走了一遍，
  *      这套骨架跑通后，其余页面照抄结构即可。
  *
- * 没做完的部分（故意留的）：
- *   README 渲染、代码高亮、Issues / PR / Actions 三个子页 ——
- *   这些要等 Markdown 渲染方案定下来再动，先不夹带进来。
+ * tab 结构对齐 page-repo.js 的 TABS：
+ *   代码 / 议题 / 拉取请求 / Actions / 发布 / 更多
+ * 「更多」里是 提交 / 分支 / 贡献者。
  */
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -81,7 +81,7 @@ fun RepoScreen(
     onBack: () -> Unit,
     onOpenFile: (String, String) -> Unit,
     onOpenInWeb: () -> Unit,
-    onOpenIssues: () -> Unit
+    onOpenWeb: (String) -> Unit
 ) {
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -94,6 +94,8 @@ fun RepoScreen(
     var avatar by remember { mutableStateOf<Bitmap?>(null) }
     var loading by remember { mutableStateOf(true) }
     var err by remember { mutableStateOf<String?>(null) }
+    // 对齐 page-repo.js 的 TABS
+    var tab by remember { mutableStateOf(0) }
 
     // 加载目录内容：切换分支 / 点进子目录都走这里
     val loadDir: suspend (String) -> Unit = { p ->
@@ -184,48 +186,74 @@ fun RepoScreen(
                 }
                 repo != null -> {
                     val r = repo!!
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 32.dp)
-                    ) {
-                        item { RepoHeader(r, avatar) }
-                        item {
-                            Row(
-                                Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
+                    // 对齐 page-repo.js 的 TABS：代码/议题/拉取请求/Actions/发布/更多
+                    val tabs = listOf("代码", "议题", "拉取请求", "Actions", "发布", "更多")
+                    Column(Modifier.fillMaxSize()) {
+                        androidx.compose.material3.TabRow(
+                            selectedTabIndex = tab,
+                            containerColor = LocalHubColors.current.bg,
+                            contentColor = LocalHubColors.current.accent
+                        ) {
+                            tabs.forEachIndexed { i, t ->
+                                androidx.compose.material3.Tab(tab == i, { tab = i }) {
+                                    Text(t, fontSize = 12.sp, maxLines = 1)
+                                }
+                            }
+                        }
+                        when (tab) {
+                            0 -> LazyColumn(
+                                modifier = Modifier.fillMaxSize(),
+                                contentPadding = PaddingValues(bottom = 32.dp)
                             ) {
-                                BranchBox(branch, branches) { b ->
-                                    branch = b
-                                    scope.launch { loadDir("") }
+                                item { RepoHeader(r, avatar) }
+                                item {
+                                    Row(
+                                        Modifier.fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        BranchBox(branch, branches) { b ->
+                                            branch = b
+                                            scope.launch { loadDir("") }
+                                        }
+                                        Spacer(Modifier.width(10.dp))
+                                        OutlinedButton(onClick = onOpenInWeb) {
+                                            Text("网页版", fontSize = 12.sp)
+                                        }
+                                    }
                                 }
-                                Spacer(Modifier.width(10.dp))
-                                OutlinedButton(onClick = onOpenIssues) {
-                                    Text("Issues", fontSize = 12.sp)
+                                item {
+                                    PathBar(path) { target ->
+                                        scope.launch { loadDir(target) }
+                                    }
+                                }
+                                if (loading) {
+                                    item {
+                                        Box(Modifier.fillMaxWidth().padding(24.dp),
+                                            Alignment.Center) {
+                                            CircularProgressIndicator(
+                                                Modifier.size(20.dp),
+                                                color = LocalHubColors.current.accent
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    items(entries) { e ->
+                                        EntryRow(e) {
+                                            if (e.isDir) scope.launch { loadDir(e.path) }
+                                            else onOpenFile(e.path, branch)
+                                        }
+                                        Divider(color = LocalHubColors.current.borderMuted,
+                                            thickness = 0.5.dp)
+                                    }
                                 }
                             }
-                        }
-                        item {
-                            PathBar(path) { target ->
-                                scope.launch { loadDir(target) }
-                            }
-                        }
-                        if (loading) {
-                            item {
-                                Box(Modifier.fillMaxWidth().padding(24.dp), Alignment.Center) {
-                                    CircularProgressIndicator(
-                                        Modifier.size(20.dp),
-                                        color = LocalHubColors.current.accent
-                                    )
-                                }
-                            }
-                        } else {
-                            items(entries) { e ->
-                                EntryRow(e) {
-                                    if (e.isDir) scope.launch { loadDir(e.path) }
-                                    else onOpenFile(e.path, branch)
-                                }
-                                Divider(color = LocalHubColors.current.border, thickness = 0.5.dp)
-                            }
+                            1 -> IssuesScreen(owner = owner, name = name,
+                                onBack = { tab = 0 }, onOpenWeb = onOpenWeb)
+                            2 -> PullsScreen(owner, name, onOpenWeb)
+                            3 -> ActionsScreen(owner, name, onOpenWeb)
+                            4 -> ReleasesScreen(owner, name, onOpenWeb)
+                            else -> MoreScreen(owner, name, onOpenWeb)
                         }
                     }
                 }

@@ -473,6 +473,280 @@ object GitHubApi {
         return if (u.startsWith("http")) u else "https://github.com/${n.repoFullName}"
     }
 
+    /* ---------- 动态（events） ---------- */
+
+    data class EventInfo(
+        val type: String,
+        val actor: String,
+        val actorAvatar: String,
+        val repoName: String,
+        val action: String,
+        val title: String,
+        val createdAt: String,
+        val url: String
+    )
+
+    /** /users/:login/events/public —— 用户动态 */
+    fun events(ctx: Context, login: String, page: Int = 1): List<EventInfo> {
+        val s = get(ctx, "$API/users/$login/events/public?per_page=30&page=$page")
+        val arr = org.json.JSONArray(s)
+        val out = ArrayList<EventInfo>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val t = o.safe("type")
+            val actor = o.optJSONObject("actor")?.safe("login") ?: ""
+            val repo = o.optJSONObject("repo")?.safe("name") ?: ""
+            val payload = o.optJSONObject("payload")
+            val title = when (t) {
+                "PushEvent" -> {
+                    val n = payload?.optJSONArray("commits")?.length() ?: 0
+                    "推送了 $n 个提交"
+                }
+                "IssuesEvent" -> (payload?.safe("action") ?: "") + " 议题 " +
+                    (payload?.optJSONObject("issue")?.safe("title") ?: "")
+                "PullRequestEvent" -> (payload?.safe("action") ?: "") + " 拉取请求 " +
+                    (payload?.optJSONObject("pull_request")?.safe("title") ?: "")
+                "WatchEvent" -> "Star 了"
+                "ForkEvent" -> "Fork 到 " + (payload?.optJSONObject("forkee")?.safe("full_name") ?: "")
+                "CreateEvent" -> "创建了 " + (payload?.safe("ref_type") ?: "")
+                "IssueCommentEvent" -> "评论了 " +
+                    (payload?.optJSONObject("issue")?.safe("title") ?: "")
+                "DeleteEvent" -> "删除了 " + (payload?.safe("ref_type") ?: "")
+                "ReleaseEvent" -> "发布了 " +
+                    (payload?.optJSONObject("release")?.safe("name") ?: "")
+                "PublicEvent" -> "公开了仓库"
+                "MemberEvent" -> "添加了协作者"
+                else -> t
+            }
+            out.add(EventInfo(
+                type = t,
+                actor = actor,
+                actorAvatar = o.optJSONObject("actor")?.safe("avatar_url") ?: "",
+                repoName = repo,
+                action = payload?.safe("action") ?: "",
+                title = title,
+                createdAt = o.safe("created_at"),
+                url = if (repo.isNotBlank()) "https://github.com/$repo" else ""
+            ))
+        }
+        return out
+    }
+
+    /* ---------- 用户 / 组织 ---------- */
+
+    fun followers(ctx: Context, login: String): List<UserInfo> =
+        userList(ctx, "$API/users/$login/followers")
+
+    fun following(ctx: Context, login: String): List<UserInfo> =
+        userList(ctx, "$API/users/$login/following")
+
+    fun orgs(ctx: Context, login: String): List<UserInfo> =
+        userList(ctx, "$API/users/$login/orgs")
+
+    private fun userList(ctx: Context, url: String): List<UserInfo> {
+        val arr = org.json.JSONArray(get(ctx, "$url?per_page=100"))
+        val out = ArrayList<UserInfo>()
+        for (i in 0 until arr.length()) out.add(UserInfo.from(arr.getJSONObject(i)))
+        return out
+    }
+
+    data class SearchUsersResult(val total: Int, val items: List<UserInfo>)
+
+    fun searchUsers(ctx: Context, q: String, page: Int = 1): SearchUsersResult {
+        val o = JSONObject(get(ctx, "$API/search/users?q=" +
+            java.net.URLEncoder.encode(q, "UTF-8") + "&per_page=30&page=$page"))
+        val arr = o.optJSONArray("items") ?: org.json.JSONArray()
+        val out = ArrayList<UserInfo>()
+        for (i in 0 until arr.length()) out.add(UserInfo.from(arr.getJSONObject(i)))
+        return SearchUsersResult(o.optInt("total_count"), out)
+    }
+
+    /* ---------- 通知操作 ---------- */
+
+    /** 全部标为已读 */
+    fun markAllRead(ctx: Context): Boolean = try {
+        Http.request("PUT", "$API/notifications", "{}", headers(ctx))
+        true
+    } catch (e: Throwable) { false }
+
+    /** 单条标为已读：thread id */
+    fun markRead(ctx: Context, threadId: String): Boolean = try {
+        Http.request("PATCH", "$API/notifications/threads/$threadId", "{}", headers(ctx))
+        true
+    } catch (e: Throwable) { false }
+
+    /* ---------- Gist ---------- */
+
+    data class GistInfo(
+        val id: String,
+        val description: String,
+        val files: List<String>,
+        val updatedAt: String,
+        val public: Boolean
+    )
+
+    fun gists(ctx: Context, login: String): List<GistInfo> {
+        val arr = org.json.JSONArray(get(ctx, "$API/users/$login/gists?per_page=50"))
+        val out = ArrayList<GistInfo>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val fs = o.optJSONObject("files")
+            val names = ArrayList<String>()
+            if (fs != null) {
+                val it = fs.keys()
+                while (it.hasNext()) names.add(it.next())
+            }
+            out.add(GistInfo(o.safe("id"), o.safe("description"), names,
+                o.safe("updated_at"), o.optBoolean("public")))
+        }
+        return out
+    }
+
+    /* ---------- 仓库子页 ---------- */
+
+    data class PrInfo(
+        val number: Int,
+        val title: String,
+        val state: String,
+        val user: String,
+        val createdAt: String,
+        val merged: Boolean,
+        val draft: Boolean,
+        val comments: Int
+    ) {
+        companion object {
+            fun from(o: JSONObject): PrInfo {
+                val merged = !o.isNull("merged_at") && o.safe("merged_at").isNotBlank()
+                return PrInfo(
+                    number = o.optInt("number"),
+                    title = o.str("title"),
+                    state = o.str("state"),
+                    user = o.optJSONObject("user")?.str("login") ?: "",
+                    createdAt = o.str("created_at"),
+                    merged = merged,
+                    draft = o.optBoolean("draft"),
+                    comments = o.optInt("comments")
+                )
+            }
+        }
+    }
+
+    fun pulls(ctx: Context, owner: String, name: String, state: String = "open"): List<PrInfo> {
+        val arr = org.json.JSONArray(get(ctx,
+            "$API/repos/$owner/$name/pulls?state=$state&per_page=50&sort=updated"))
+        val out = ArrayList<PrInfo>()
+        for (i in 0 until arr.length()) out.add(PrInfo.from(arr.getJSONObject(i)))
+        return out
+    }
+
+    data class ReleaseInfo(
+        val id: Long,
+        val tag: String,
+        val name: String,
+        val body: String,
+        val publishedAt: String,
+        val draft: Boolean,
+        val prerelease: Boolean,
+        val assets: List<AssetInfo>
+    )
+    data class AssetInfo(val name: String, val size: Long, val url: String, val downloads: Int)
+
+    fun releases(ctx: Context, owner: String, name: String): List<ReleaseInfo> {
+        val arr = org.json.JSONArray(get(ctx, "$API/repos/$owner/$name/releases?per_page=30"))
+        val out = ArrayList<ReleaseInfo>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            val aa = o.optJSONArray("assets")
+            val as = ArrayList<AssetInfo>()
+            if (aa != null) for (j in 0 until aa.length()) {
+                val a = aa.getJSONObject(j)
+                as.add(AssetInfo(a.str("name"), a.optLong("size"),
+                    a.str("browser_download_url"), a.optInt("download_count")))
+            }
+            out.add(ReleaseInfo(o.optLong("id"), o.str("tag_name"), o.str("name"),
+                o.str("body"), o.str("published_at"), o.optBoolean("draft"),
+                o.optBoolean("prerelease"), as))
+        }
+        return out
+    }
+
+    data class CommitInfo(val sha: String, val message: String, val author: String, val date: String)
+    data class ContributorInfo(val login: String, val avatar: String, val contributions: Int)
+
+    fun commits(ctx: Context, owner: String, name: String): List<CommitInfo> {
+        val arr = org.json.JSONArray(get(ctx, "$API/repos/$owner/$name/commits?per_page=50"))
+        val out = ArrayList<CommitInfo>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            out.add(CommitInfo(
+                sha = o.str("sha"),
+                message = o.optJSONObject("commit")?.str("message") ?: "",
+                author = o.optJSONObject("author")?.str("login")
+                    ?: o.optJSONObject("commit")?.optJSONObject("author")?.str("name") ?: "",
+                date = o.optJSONObject("commit")?.optJSONObject("author")?.str("date") ?: ""
+            ))
+        }
+        return out
+    }
+
+    fun contributors(ctx: Context, owner: String, name: String): List<ContributorInfo> {
+        val arr = org.json.JSONArray(get(ctx, "$API/repos/$owner/$name/contributors?per_page=50"))
+        val out = ArrayList<ContributorInfo>()
+        for (i in 0 until arr.length()) {
+            val o = arr.getJSONObject(i)
+            out.add(ContributorInfo(o.str("login"), o.str("avatar_url"),
+                o.optInt("contributions")))
+        }
+        return out
+    }
+
+    /* ---------- Actions ---------- */
+
+    data class WorkflowInfo(val id: Long, val name: String, val state: String, val path: String)
+    data class RunInfo(
+        val id: Long, val name: String, val status: String, val conclusion: String,
+        val branch: String, val event: String, val createdAt: String, val number: Int
+    )
+
+    fun workflows(ctx: Context, owner: String, name: String): List<WorkflowInfo> {
+        val o = JSONObject(get(ctx, "$API/repos/$owner/$name/actions/workflows"))
+        val arr = o.optJSONArray("workflows") ?: org.json.JSONArray()
+        val out = ArrayList<WorkflowInfo>()
+        for (i in 0 until arr.length()) {
+            val w = arr.getJSONObject(i)
+            out.add(WorkflowInfo(w.optLong("id"), w.str("name"), w.str("state"), w.str("path")))
+        }
+        return out
+    }
+
+    fun runs(ctx: Context, owner: String, name: String): List<RunInfo> {
+        val o = JSONObject(get(ctx,
+            "$API/repos/$owner/$name/actions/runs?per_page=30"))
+        val arr = o.optJSONArray("workflow_runs") ?: org.json.JSONArray()
+        val out = ArrayList<RunInfo>()
+        for (i in 0 until arr.length()) {
+            val r = arr.getJSONObject(i)
+            out.add(RunInfo(r.optLong("id"), r.str("name"), r.str("status"),
+                r.str("conclusion"), r.str("head_branch"), r.str("event"),
+                r.str("created_at"), r.optInt("run_number")))
+        }
+        return out
+    }
+
+    /* ---------- API 配额 ---------- */
+
+    data class RateLimit(val limit: Int, val remaining: Int, val resetAt: Long)
+
+    fun rateLimit(ctx: Context): RateLimit {
+        val o = JSONObject(get(ctx, "$API/rate_limit"))
+        val core = o.optJSONObject("rate") ?: o.optJSONObject("resources")?.optJSONObject("core")
+        return RateLimit(
+            limit = core?.optInt("limit") ?: 0,
+            remaining = core?.optInt("remaining") ?: 0,
+            resetAt = core?.optLong("reset")?.times(1000) ?: 0L
+        )
+    }
+
     /* ---------- 探索（trending） ---------- */
 
     /**
