@@ -23,21 +23,20 @@ Daemon will be stopped at the end of the build
 > Task :app:parseReleaseLocalResources FROM-CACHE
 > Task :app:createReleaseCompatibleScreenManifests
 > Task :app:extractDeepLinksRelease FROM-CACHE
-> Task :app:processReleaseMainManifest
 > Task :app:mergeReleaseResources
+> Task :app:processReleaseMainManifest
 > Task :app:processReleaseManifest
 > Task :app:javaPreCompileRelease FROM-CACHE
 > Task :app:desugarReleaseFileDependencies
-> Task :app:processReleaseManifestForPackage
-> Task :app:mergeExtDexRelease
-> Task :app:mergeReleaseShaders FROM-CACHE
 > Task :app:mergeReleaseArtProfile
+> Task :app:mergeReleaseShaders FROM-CACHE
+> Task :app:processReleaseManifestForPackage
 > Task :app:compileReleaseShaders NO-SOURCE
 > Task :app:generateReleaseAssets UP-TO-DATE
 > Task :app:mergeReleaseAssets FROM-CACHE
 > Task :app:collectReleaseDependencies
-> Task :app:processReleaseResources
 > Task :app:compressReleaseAssets
+> Task :app:processReleaseResources
 > Task :app:sdkReleaseDependencyData
 > Task :app:validateSigningRelease
 > Task :app:writeReleaseAppMetadata
@@ -45,7 +44,9 @@ Daemon will be stopped at the end of the build
 > Task :app:optimizeReleaseResources
 
 > Task :app:compileReleaseKotlin FAILED
-e: This version (1.5.4) of the Compose Compiler requires Kotlin version 1.9.20 but you appear to be using Kotlin version 1.9.24 which is not known to be compatible.  Please consult the Compose-Kotlin compatibility map located at https://developer.android.com/jetpack/androidx/releases/compose-kotlin to choose a compatible version pair (or `suppressKotlinVersionCompatibilityCheck` but don't say I didn't warn you!).
+e: This version (1.5.8) of the Compose Compiler requires Kotlin version 1.9.22 but you appear to be using Kotlin version 1.9.24 which is not known to be compatible.  Please consult the Compose-Kotlin compatibility map located at https://developer.android.com/jetpack/androidx/releases/compose-kotlin to choose a compatible version pair (or `suppressKotlinVersionCompatibilityCheck` but don't say I didn't warn you!).
+
+> Task :app:mergeExtDexRelease
 
 FAILURE: Build failed with an exception.
 
@@ -251,5 +252,5 @@ Caused by: org.jetbrains.kotlin.gradle.tasks.CompilationErrorException: Compilat
 	... 2 more
 
 
-BUILD FAILED in 46s
+BUILD FAILED in 35s
 31 actionable tasks: 24 executed, 7 from cache
